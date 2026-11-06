@@ -40,11 +40,12 @@ border:1px solid #8db8e6;color:#2f7cd0;font-size:14px}
 .stat .k{font-size:12.5px;color:#8b94a3}
 .stat .v{font-size:21px;font-weight:700;margin-top:6px;letter-spacing:-.4px}
 .blue{color:#2f6fd0}.red{color:#e0453a}.green{color:#16a34a}.orange{color:#e08a15}.purple{color:#8b3fd0}
-.chartwrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-.chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding:18px 2px 0;min-width:100%}
-.bar{flex:1;min-width:31px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
-.bar .bv{font-size:10px;color:#8b94a3;margin-bottom:5px;white-space:nowrap;transform:scale(.92)}
-.bar .bb{width:26px;border-radius:5px;background:#5b9ede;transition:height .3s}
+.chartwrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+.chartwrap::-webkit-scrollbar{display:none;width:0;height:0}
+.chart{display:flex;align-items:flex-end;gap:8px;height:156px;padding:20px 2px 0;min-width:max-content}
+.bar{flex:0 0 auto;min-width:56px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+.bar .bv{font-size:10.5px;color:#8b94a3;margin-bottom:5px;white-space:nowrap;transform:scale(.92)}
+.bar .bb{width:30px;border-radius:5px;background:#5b9ede;transition:height .3s}
 .bar.sel .bb{background:#22b573;box-shadow:0 0 0 3px rgba(34,181,115,.18)}
 .bar.sel .bv{color:#16a34a;font-weight:700}
 .bar .bl{font-size:11px;color:#8b94a3;margin-top:7px}
@@ -280,8 +281,6 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
       </div>
       <div class="stats" style="margin:6px 0 8px" id="yStats"></div>
       <div style="font-size:13.5px;color:#8b94a3">全年包邮运费：<b style="color:#2f7cd0" id="yFreight">¥0.00</b></div>
-      <div class="cardhead" style="margin-top:14px;font-size:15px"><div class="l">📈 各月金额分布</div></div>
-      <div class="chartwrap"><div class="chart2" id="yChart"></div></div>
       <div class="cardhead" style="margin-top:14px;font-size:15px"><div class="l">👤 发货人统计</div></div>
       <div id="yShippers"></div>
       <div class="cardhead" style="margin-top:14px;font-size:15px"><div class="l">🏆 全年热销TOP5</div></div>
@@ -696,27 +695,39 @@ function statCard(k, v, cls, isMoney) {
   return '<div class="stat"><div class="k">' + k + '</div><div class="v ' + cls + '">' + val + '</div></div>';
 }
 
+function fmtAmt(v) {
+  const n = Math.round(numv(v));
+  return '¥' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
 function renderTrend() {
-  const y = curMonth.getFullYear();
+  const endY = curMonth.getFullYear();
   const data = [];
-  for (let m = 0; m < 12; m++) {
-    const l = S.records.filter(r => (r.shipDate || '').slice(0, 7) === y + '-' + pad2(m + 1));
-    data.push({m: m + 1, n: l.length, v: l.reduce((s, r) => s + numv(r.totalPrice), 0)});
+  for (let y = endY - 1; y <= endY; y++) {
+    for (let m = 1; m <= 12; m++) {
+      const key = y + '-' + pad2(m);
+      const l = S.records.filter(r => (r.shipDate || '').slice(0, 7) === key);
+      data.push({y: y, m: m, n: l.length, v: l.reduce((s, r) => s + numv(r.totalPrice), 0)});
+    }
   }
   const max = Math.max(1, ...data.map(d => d.v));
-  const selM = curMonth.getMonth() + 1;
+  const selY = curMonth.getFullYear(), selM = curMonth.getMonth() + 1;
   $('hTrend').innerHTML = data.map(d => {
-    const h = Math.max(6, Math.round(d.v / max * 112));
-    const sel = d.m === selM;
-    return '<div class="bar' + (sel ? ' sel' : '') + '" onclick="pickMonth(' + d.m + ')">' +
-      '<div class="bv">' + (d.v >= 10000 ? Math.round(d.v / 1000) + 'k' : (d.v ? Math.round(d.v) : '')) + '</div>' +
+    const h = Math.max(6, Math.round(d.v / max * 108));
+    const sel = (d.y === selY && d.m === selM);
+    return '<div class="bar' + (sel ? ' sel' : '') + '" onclick="pickMonthAt(' + d.y + ',' + d.m + ')">' +
+      '<div class="bv">' + (d.v ? fmtAmt(d.v) : '') + '</div>' +
       '<div class="bb" style="height:' + h + 'px"></div>' +
       '<div class="bl">' + d.m + '月</div>' +
-      (d.m === 12 ? '<div class="yr">' + String(y).slice(2) + '年</div>' : '') +
+      (d.m === 12 ? '<div class="yr">' + String(d.y).slice(2) + '年</div>' : '') +
       '</div>';
   }).join('');
   const wrap = $('hTrend').parentNode;
   setTimeout(() => { wrap.scrollLeft = wrap.scrollWidth; }, 30);
+}
+function pickMonthAt(y, m) {
+  curMonth = new Date(y, m - 1, 1);
+  RANGE = {home: null, bills: null, recon: null};
+  renderAll();
 }
 function pickMonth(m) {
   curMonth = new Date(curMonth.getFullYear(), m - 1, 1);
@@ -735,16 +746,6 @@ function renderYear() {
     statCard('待收尾款', money(st.due), 'orange', true);
   $('yFreight').textContent = money(st.freight);
 
-  const data = [];
-  for (let m = 0; m < 12; m++) {
-    const l = list.filter(r => (r.shipDate || '').slice(0, 7) === curYear + '-' + pad2(m + 1));
-    data.push({m: m + 1, v: l.reduce((s, r) => s + numv(r.totalPrice), 0)});
-  }
-  const max = Math.max(1, ...data.map(d => d.v));
-  $('yChart').innerHTML = data.map(d =>
-    '<div class="bar"><div class="bv">' + (d.v >= 10000 ? Math.round(d.v / 1000) + 'k' : (d.v ? Math.round(d.v) : '') + '') + '</div>' +
-    '<div class="bb" style="height:' + Math.max(5, Math.round(d.v / max * 92)) + 'px"></div>' +
-    '<div class="bl">' + d.m + '</div></div>').join('');
 
   const bys = {};
   list.forEach(r => {
