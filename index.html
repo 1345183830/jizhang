@@ -197,6 +197,28 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .rangebar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
 .notice{font-size:12.5px;color:#9aa4b2;text-align:center;padding:6px 0 0}
+.dpmask{position:fixed;inset:0;background:rgba(15,25,40,.45);display:none;align-items:center;justify-content:center;z-index:80;padding:0 22px}
+.dpmask.on{display:flex}
+.dp{background:#fff;width:100%;max-width:400px;border-radius:18px;padding:18px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+.dp-head{display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:600;color:#1f2937;margin-bottom:14px}
+.dp-head .x{color:#9aa4b2;font-size:20px;font-weight:400;line-height:1}
+.dp-quick{display:flex;gap:10px;margin-bottom:12px}
+.dp-quick button{flex:1;height:38px;border:0;border-radius:9px;background:#f4f6f9;color:#4b5563;font-size:14px}
+.dp-quick button.on{background:#e8f2ff;color:#2f7cd0;font-weight:600}
+.dp-years{display:flex;gap:10px;justify-content:center;margin-bottom:6px}
+.dp-years button{padding:7px 15px;border-radius:18px;border:1px solid #e2e7ee;background:#fff;color:#6b7280;font-size:13.5px}
+.dp-years button.on{border-color:#2f7cd0;color:#2f7cd0;background:#f2f7ff}
+.dp-wheels{position:relative;display:flex;height:180px;overflow:hidden;margin-top:4px;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,0),#000 26%,#000 74%,rgba(0,0,0,0));mask-image:linear-gradient(to bottom,rgba(0,0,0,0),#000 26%,#000 74%,rgba(0,0,0,0))}
+.dp-band{position:absolute;left:0;right:0;top:68px;height:44px;background:#edf4ff;border-radius:8px;pointer-events:none;z-index:0}
+.dcol{flex:1;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;position:relative;z-index:1;text-align:center;padding:68px 0;box-sizing:border-box;overscroll-behavior:contain}
+.dcol::-webkit-scrollbar{display:none;width:0;height:0}
+.di{height:44px;line-height:44px;font-size:16px;color:#9aa4b2;scroll-snap-align:center;transition:color .15s}
+.di.sel{color:#2f7cd0;font-weight:700}
+.dp-foot{display:flex;gap:10px;margin-top:12px}
+.dp-foot button{flex:1;height:46px;border:0;border-radius:10px;font-size:16px}
+.dp-cancel{background:#f2f4f8;color:#6b7280}
+.dp-ok{background:#4b9bf0;color:#fff;font-weight:600}
+
 .listitem{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f7;font-size:14.5px}
 .listitem .rm{color:#d6483f;font-size:13px;padding:4px 8px}
 .empty{text-align:center;color:#a6afbc;font-size:13.5px;padding:22px 0}
@@ -401,7 +423,7 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
       </div>
       <div class="field">
         <div class="lb">发货日期</div>
-        <input class="inp" id="aDate" type="date">
+        <input class="inp" id="aDate" type="text" readonly placeholder="选择发货日期" onclick="openDatePicker('aDate')">
       </div>
       <div class="field">
         <div class="lb">发货物流</div>
@@ -1416,7 +1438,7 @@ function openEdit(id) {
     '<option value="include"' + (r.freightType === 'include' ? ' selected' : '') + '>包邮（寄付）</option>' +
     '<option value="collect"' + (r.freightType === 'collect' ? ' selected' : '') + '>运费到付</option></select></div>' +
     '<div class="field"><div class="lb">运费（元）</div><input class="inp" id="eFreight" type="number" value="' + (r.freight || 0) + '"></div></div>' +
-    '<div class="row2"><div class="field"><div class="lb">发货日期</div><input class="inp" id="eDate" type="date" value="' + (r.shipDate || '') + '"></div>' +
+    '<div class="row2"><div class="field"><div class="lb">发货日期</div><input class="inp" id="eDate" type="text" readonly onclick="openDatePicker(\'eDate\')" value="' + (r.shipDate || '') + '"></div>' +
     '<div class="field"><div class="lb">发货状态</div><select class="inp" id="eStatus">' +
     '<option value="shipped"' + (r.shipStatus !== 'pending' ? ' selected' : '') + '>已发货</option>' +
     '<option value="pending"' + (r.shipStatus === 'pending' ? ' selected' : '') + '>待发货</option></select></div></div>' +
@@ -1724,6 +1746,134 @@ function bindDraft() {
   const _renderAll = renderAll;
   window.renderAll = function () { refreshDL(); _renderAll(); };
 })();
+
+/* ===================== 发货日期滚轮选择器 ===================== */
+var DP = null;
+var DP_ITEM_H = 44;
+function dpMaskEl() {
+  var m = $('dpMask');
+  if (m) return m;
+  m = document.createElement('div');
+  m.id = 'dpMask'; m.className = 'dpmask';
+  m.innerHTML =
+    '<div class="dp">' +
+      '<div class="dp-head"><span>选择发货日期</span><span class="x" onclick="closeDatePicker()">✕</span></div>' +
+      '<div class="dp-quick" id="dpQuick"></div>' +
+      '<div class="dp-years" id="dpYears"></div>' +
+      '<div class="dp-wheels"><div class="dp-band"></div>' +
+        '<div class="dcol" id="dpY"></div><div class="dcol" id="dpM"></div><div class="dcol" id="dpD"></div>' +
+      '</div>' +
+      '<div class="dp-foot"><button class="dp-cancel" onclick="closeDatePicker()">取消</button>' +
+      '<button class="dp-ok" onclick="dpConfirm()">确定</button></div>' +
+    '</div>';
+  m.addEventListener('click', function (e) { if (e.target === m) closeDatePicker(); });
+  document.body.appendChild(m);
+  return m;
+}
+function openDatePicker(target) {
+  if (DP) return;
+  var inp = $(target);
+  var v = (inp && /^\d{4}-\d{2}-\d{2}$/.test(inp.value || '')) ? inp.value : todayStr();
+  DP = {target: target, y: +v.slice(0, 4), m: +v.slice(5, 7), d: +v.slice(8, 10), t: null, lock: false, lockT: null};
+  var box = dpMaskEl();
+  $('dpQuick').innerHTML = ['今天', '昨天', '前天'].map(function (t, i) {
+    return '<button data-off="' + i + '" onclick="dpQuick(' + i + ')">' + t + '</button>';
+  }).join('');
+  var base = new Date().getFullYear();
+  var yh = '';
+  for (var y = base - 2; y <= base; y++) yh += '<button data-y="' + y + '" onclick="dpPickYear(' + y + ')">' + y + '年</button>';
+  $('dpYears').innerHTML = yh;
+  dpRenderCols();
+  box.classList.add('on');
+  requestAnimationFrame(function () {
+    dpScrollTo('dpY', DP.y); dpScrollTo('dpM', DP.m); dpScrollTo('dpD', DP.d); dpPaint();
+  });
+}
+function dpRenderCols() {
+  var cy = new Date().getFullYear();
+  var yh = '', mh = '', dh = '', y, m, d;
+  for (y = cy - 10; y <= cy + 2; y++) yh += '<div class="di" data-v="' + y + '">' + y + '年</div>';
+  for (m = 1; m <= 12; m++) mh += '<div class="di" data-v="' + m + '">' + m + '月</div>';
+  var days = new Date(DP.y, DP.m, 0).getDate();
+  if (DP.d > days) DP.d = days;
+  for (d = 1; d <= days; d++) dh += '<div class="di" data-v="' + d + '">' + d + '日</div>';
+  $('dpY').innerHTML = yh; $('dpM').innerHTML = mh; $('dpD').innerHTML = dh;
+  ['dpY', 'dpM', 'dpD'].forEach(function (id) {
+    var el = $(id);
+    el.onscroll = function () { dpOnScroll(id); };
+    el.onclick = function (ev) {
+      var t = ev.target;
+      if (!t || !t.classList || !t.classList.contains('di')) return;
+      var i = Array.prototype.indexOf.call(el.children, t);
+      el.scrollTop = i * DP_ITEM_H;
+      dpOnScroll(id);
+    };
+  });
+}
+function dpScrollTo(id, v) {
+  var el = $(id), idx = -1;
+  for (var i = 0; i < el.children.length; i++) { if (+el.children[i].dataset.v === +v) { idx = i; break; } }
+  if (idx < 0) return;
+  DP.lock = true;
+  el.scrollTop = idx * DP_ITEM_H;
+  clearTimeout(DP.lockT);
+  DP.lockT = setTimeout(function () { DP.lock = false; }, 240);
+}
+function dpOnScroll(id) {
+  if (!DP) return;
+  clearTimeout(DP.t);
+  DP.t = setTimeout(function () {
+    if (!DP || DP.lock) return;
+    var el = $(id);
+    var idx = Math.max(0, Math.min(el.children.length - 1, Math.round(el.scrollTop / DP_ITEM_H)));
+    var v = +el.children[idx].dataset.v;
+    if (id === 'dpY' && DP.y !== v) { DP.y = v; dpRenderCols(); dpScrollTo('dpY', DP.y); dpScrollTo('dpM', DP.m); dpScrollTo('dpD', DP.d); }
+    else if (id === 'dpM' && DP.m !== v) { DP.m = v; dpRenderCols(); dpScrollTo('dpY', DP.y); dpScrollTo('dpM', DP.m); dpScrollTo('dpD', DP.d); }
+    else if (id === 'dpD') DP.d = v;
+    dpPaint();
+  }, 120);
+}
+function dpPaint() {
+  if (!DP) return;
+  var map = {dpY: DP.y, dpM: DP.m, dpD: DP.d};
+  Object.keys(map).forEach(function (id) {
+    var kids = $(id).children;
+    for (var i = 0; i < kids.length; i++) kids[i].classList.toggle('sel', +kids[i].dataset.v === map[id]);
+  });
+  var t = new Date();
+  var diff = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(DP.y, DP.m - 1, DP.d)) / 86400000);
+  var qs = $('dpQuick').children;
+  for (var i = 0; i < qs.length; i++) qs[i].classList.toggle('on', i === diff);
+  var ys = $('dpYears').children;
+  for (var j = 0; j < ys.length; j++) ys[j].classList.toggle('on', +ys[j].dataset.y === DP.y);
+}
+function dpQuick(off) {
+  if (!DP) return;
+  var t = new Date();
+  var d = new Date(t.getFullYear(), t.getMonth(), t.getDate() - off);
+  DP.y = d.getFullYear(); DP.m = d.getMonth() + 1; DP.d = d.getDate();
+  dpRenderCols(); dpScrollTo('dpY', DP.y); dpScrollTo('dpM', DP.m); dpScrollTo('dpD', DP.d); dpPaint();
+  dpConfirm();
+}
+function dpPickYear(y) {
+  if (!DP) return;
+  DP.y = y; dpRenderCols();
+  dpScrollTo('dpY', DP.y); dpScrollTo('dpM', DP.m); dpScrollTo('dpD', DP.d);
+  dpPaint();
+}
+function dpConfirm() {
+  if (!DP) return;
+  var inp = $(DP.target);
+  if (inp) inp.value = DP.y + '-' + pad2(DP.m) + '-' + pad2(DP.d);
+  closeDatePicker();
+}
+function closeDatePicker() {
+  var m = $('dpMask');
+  if (m) m.classList.remove('on');
+  if (DP) { clearTimeout(DP.t); clearTimeout(DP.lockT); }
+  DP = null;
+}
+
 
 </script>
 </body>
