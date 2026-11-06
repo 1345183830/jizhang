@@ -214,9 +214,9 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
 .dp-years button.on{border-color:#2f7cd0;color:#2f7cd0;background:#f2f7ff}
 .dp-wheels{position:relative;display:flex;height:180px;overflow:hidden;margin-top:4px;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,0),#000 26%,#000 74%,rgba(0,0,0,0));mask-image:linear-gradient(to bottom,rgba(0,0,0,0),#000 26%,#000 74%,rgba(0,0,0,0))}
 .dp-band{position:absolute;left:0;right:0;top:68px;height:44px;background:#edf4ff;border-radius:8px;pointer-events:none;z-index:0}
-.dcol{flex:1;height:100%;overflow-y:auto;scrollbar-width:none;position:relative;z-index:1;text-align:center;padding:68px 0;box-sizing:border-box;overscroll-behavior:contain}
+.dcol{flex:1;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;position:relative;z-index:1;text-align:center;padding:68px 0;box-sizing:border-box;overscroll-behavior:contain}
 .dcol::-webkit-scrollbar{display:none;width:0;height:0}
-.di{height:44px;line-height:44px;font-size:16px;color:#9aa4b2;transition:color .15s}
+.di{height:44px;line-height:44px;font-size:16px;color:#9aa4b2;scroll-snap-align:center;transition:color .15s}
 .di.sel{color:#2f7cd0;font-weight:700}
 .dp-foot{display:flex;gap:10px;margin-top:12px}
 .dp-foot button{flex:1;height:46px;border:0;border-radius:10px;font-size:16px}
@@ -1868,11 +1868,7 @@ function openDatePicker(target) {
   box.classList.add('on');
   requestAnimationFrame(function () {
     dpScrollTo('dpY', DP.y); dpScrollTo('dpM', DP.m); dpScrollTo('dpD', DP.d); dpPaint();
-    setTimeout(function () {
-      if (!DP) return;
-      ['dpY', 'dpM', 'dpD'].forEach(function (id) { dpSnap(id); });
-      dpPaint();
-    }, 260);
+    setTimeout(function () { if (DP) dpPaint(); }, 260);
   });
 }
 function dpBindCol(id) {
@@ -1889,9 +1885,11 @@ function dpBindCol(id) {
 function dpRenderDays() {
   var days = new Date(DP.y, DP.m, 0).getDate();
   if (DP.d > days) DP.d = days;
+  var col = $('dpD');
+  if (col.children.length === days) { dpScrollTo('dpD', DP.d); return; }
   var dh = '', d;
   for (d = 1; d <= days; d++) dh += '<div class="di" data-v="' + d + '">' + d + '日</div>';
-  $('dpD').innerHTML = dh;
+  col.innerHTML = dh;
   dpBindCol('dpD');
   dpScrollTo('dpD', DP.d);
 }
@@ -1909,41 +1907,26 @@ function dpScrollTo(id, v) {
   var el = $(id), idx = -1;
   for (var i = 0; i < el.children.length; i++) { if (+el.children[i].dataset.v === +v) { idx = i; break; } }
   if (idx < 0) return;
-  el._dpLock = true;
   el.scrollTop = idx * DP_ITEM_H;
-  clearTimeout(el._dpLockT);
-  el._dpLockT = setTimeout(function () { el._dpLock = false; }, 200);
 }
 function dpIndex(el) {
   var raw = el.scrollTop / DP_ITEM_H;
   return Math.max(0, Math.min(el.children.length - 1, Math.round(raw)));
 }
-function dpSnap(id) {
-  var el = $(id);
-  var idx = dpIndex(el);
-  var target = idx * DP_ITEM_H;
-  if (Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
-}
 function dpOnScroll(id) {
   if (!DP) return;
   var el = $(id);
-  if (el._dpLock) return;
-  var idx = dpIndex(el);
-  var v = +el.children[idx].dataset.v;
-  if (id === 'dpY' && DP.y !== v) { DP.y = v; dpRenderDays(); }
-  else if (id === 'dpM' && DP.m !== v) { DP.m = v; dpRenderDays(); }
-  else if (id === 'dpD') { DP.d = v; }
-  dpPaint();
-  clearTimeout(el._snapT);
-  el._snapT = setTimeout(function () {
+  if (el._raf) return;
+  el._raf = requestAnimationFrame(function () {
+    el._raf = null;
     if (!DP) return;
-    dpSnap(id);
-    var nv = +el.children[dpIndex(el)].dataset.v;
-    if (id === 'dpY' && DP.y !== nv) { DP.y = nv; dpRenderDays(); }
-    else if (id === 'dpM' && DP.m !== nv) { DP.m = nv; dpRenderDays(); }
-    else if (id === 'dpD') DP.d = nv;
+    var idx = dpIndex(el);
+    var v = +el.children[idx].dataset.v;
+    if (id === 'dpY' && DP.y !== v) { DP.y = v; dpRenderDays(); }
+    else if (id === 'dpM' && DP.m !== v) { DP.m = v; dpRenderDays(); }
+    else if (id === 'dpD' && DP.d !== v) { DP.d = v; }
     dpPaint();
-  }, 160);
+  });
 }
 function dpPaint() {
   if (!DP) return;
