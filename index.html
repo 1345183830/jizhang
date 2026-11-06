@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>发货记账本</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;
+background:#f1f4f9;color:#1b2532;font-size:15px;-webkit-font-smoothing:antialiased;
+padding-bottom:calc(66px + env(safe-area-inset-bottom))}
+button{font-family:inherit;border:0;background:none;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit;font-size:15px;color:#1b2532;outline:none}
+.hd{background:linear-gradient(135deg,#3187d8 0%,#1f66b6 100%);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 18px 20px}
+.hd h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.hd .sub{margin-top:6px;font-size:13px;opacity:.9}
+.page{display:none}
+.page.on{display:block}
+.wrap{padding:12px}
+.monthbar{display:flex;align-items:center;justify-content:center;gap:26px;padding:16px 0 12px}
+.monthbar .circ{width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(20,45,80,.12);
+color:#2f7cd0;font-size:17px;display:flex;align-items:center;justify-content:center}
+.monthbar .mtitle{font-size:20px;font-weight:700;min-width:132px;text-align:center}
+.pillrow{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding-bottom:12px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:22px;background:#fff;
+border:1px solid #8db8e6;color:#2f7cd0;font-size:14px}
+.pill.orange{border-color:#f0b96a;color:#d98a12}
+.pill.active{background:#2f7cd0;color:#fff;border-color:#2f7cd0}
+.card{background:#fff;border-radius:14px;margin:0 12px 12px;padding:14px 16px;box-shadow:0 1px 3px rgba(20,45,80,.06)}
+.cardhead{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:600;padding:2px 0}
+.cardhead .l{display:flex;align-items:center;gap:6px}
+.caret{color:#9aa4b2;font-size:13px;transition:transform .2s}
+.caret.up{transform:rotate(180deg)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 12px 12px}
+.stat{background:#fff;border-radius:13px;padding:13px 14px;box-shadow:0 1px 3px rgba(20,45,80,.06)}
+.stats.in-card .stat{background:#f7f9fc;box-shadow:none}
+.stat .k{font-size:12.5px;color:#8b94a3}
+.stat .v{font-size:21px;font-weight:700;margin-top:6px;letter-spacing:-.4px}
+.blue{color:#2f6fd0}.red{color:#e0453a}.green{color:#16a34a}.orange{color:#e08a15}.purple{color:#8b3fd0}
+.chartwrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding:18px 2px 0;min-width:100%}
+.bar{flex:1;min-width:31px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+.bar .bv{font-size:10px;color:#8b94a3;margin-bottom:5px;white-space:nowrap;transform:scale(.92)}
+.bar .bb{width:26px;border-radius:5px;background:#5b9ede;transition:height .3s}
+.bar.sel .bb{background:#22b573;box-shadow:0 0 0 3px rgba(34,181,115,.18)}
+.bar.sel .bv{color:#16a34a;font-weight:700}
+.bar .bl{font-size:11px;color:#8b94a3;margin-top:7px}
+.bar.sel .bl{color:#16a34a;font-weight:600}
+.bar .yr{font-size:10px;color:#16a34a;font-weight:600}
+.chart2{display:flex;align-items:flex-end;gap:3px;height:130px;padding:20px 0 0}
+.chart2 .bar{min-width:0}
+.chart2 .bar .bb{background:#4f92d8;width:13px}
+.chart2 .bar .bv{font-size:9px;transform:scale(.8)}
+.chart2 .bar .bl{font-size:10px;margin-top:5px}
+.shipperrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f3f7}
+.shipperrow:last-child{border-bottom:0}
+.shipperrow .cbar{width:4px;height:16px;border-radius:2px}
+.shipperrow .nm{font-weight:600;flex:1}
+.shipperrow .cnt{color:#8b94a3;font-size:12.5px;margin-right:8px;width:50px;text-align:right}
+.shipperrow .amt{color:#e0453a;font-weight:600;width:104px;text-align:right;font-size:13.5px}
+.shipperrow .pf{color:#16a34a;font-weight:600;width:96px;text-align:right;font-size:13.5px}
+.toprow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0f3f7;font-size:14px}
+.toprow:last-child{border-bottom:0}
+.toprow .rk{width:24px;font-weight:700;color:#8b94a3}
+.toprow .nm{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toprow .ct{color:#8b94a3;font-size:12.5px}
+.rankbar{padding:9px 0}
+.rankbar .t{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+.rankbar .t b{font-weight:600}
+.rankbar .t span{color:#8b94a3;font-size:12.5px}
+.track{height:7px;background:#eef2f7;border-radius:4px;overflow:hidden}
+.track i{display:block;height:100%;background:#3f8fd8;border-radius:4px}
+.field{margin-bottom:14px}
+.field .lb{font-size:14.5px;color:#4b5563;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.field .hint{font-size:12.5px;color:#9aa4b2;margin-top:6px;line-height:1.5}
+.inp{width:100%;height:46px;border:1px solid #e2e7ee;border-radius:10px;padding:0 13px;background:#fff;font-size:15px}
+textarea.inp{height:84px;padding:11px 13px;resize:none;line-height:1.5}
+.inp:focus{border-color:#79afdf;box-shadow:0 0 0 3px rgba(47,124,208,.10)}
+select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6' fill='%239aa4b2'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg button{height:46px;border-radius:10px;border:1px solid #e2e7ee;background:#fff;font-size:15px;color:#4b5563}
+.seg button.on{border-color:#2f7cd0;background:#eaf3fd;color:#2f7cd0;font-weight:600}
+.mgr{width:100%;height:36px;border-radius:8px;background:#f4f6f9;color:#6b7280;font-size:13.5px;margin-top:9px}
+.goodsline{display:grid;grid-template-columns:1fr 14px 44px 54px 36px;gap:5px;align-items:center;margin-bottom:9px}
+.goodsline .x{text-align:center;color:#9aa4b2;font-size:13px}
+.goodsline .num{height:46px;border:1px solid #e2e7ee;border-radius:9px;text-align:center;padding:0 2px;width:100%;font-size:13px}
+.goodsline .del{height:38px;width:38px;border-radius:9px;background:#ef4b4b;color:#fff;font-size:16px;font-weight:700}
+.gbtn{height:32px;padding:0 12px;border-radius:8px;background:#22a05a;color:#fff;font-size:13px;font-weight:600}
+.save{width:100%;height:52px;border-radius:12px;background:#2f7cd0;color:#fff;font-size:17px;font-weight:600;
+box-shadow:0 6px 14px rgba(47,124,208,.28)}
+.save:active{transform:translateY(1px)}
+.recent{padding:0}
+.recent .item{padding:11px 0;border-bottom:1px solid #f0f3f7}
+.recent .item:last-child{border-bottom:0}
+.recent .t1{display:flex;justify-content:space-between;font-size:15px;font-weight:600;margin-bottom:5px}
+.recent .t1 .m{color:#e0453a;font-weight:700}
+.recent .t2{font-size:12.5px;color:#9aa4b2;display:flex;gap:8px;align-items:center}
+.searchbox{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e6ebf2;border-radius:11px;
+padding:0 13px;height:44px;margin:0 12px 12px}
+.searchbox input{flex:1;border:0;height:100%;font-size:14.5px;background:transparent}
+.chips{display:flex;gap:7px;overflow-x:auto;padding:0 12px 12px;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:8px 12px;border-radius:20px;background:#fff;border:1px solid #e6ebf2;color:#4b5563;font-size:13px}
+.chip.on{background:#2f7cd0;border-color:#2f7cd0;color:#fff;font-weight:600}
+.sumbox{background:#fff;border-radius:14px;margin:0 12px 12px;padding:15px 16px;box-shadow:0 1px 3px rgba(20,45,80,.06)}
+.sumhead{display:flex;justify-content:space-between;align-items:baseline}
+.sumhead .t{font-size:17px;font-weight:700}
+.sumhead .s{color:#8b94a3;font-size:13px}
+.sumhead .s b{color:#e0453a;font-weight:600}
+.sumshipper{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #f0f3f7;font-size:13px;color:#8b94a3}
+.shipchip{background:#eaf3fd;color:#2f7cd0;border-radius:6px;padding:3px 9px;font-size:12.5px}
+.rec{background:#fff;margin:0 12px 10px;padding:14px 16px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(20,45,80,.06)}
+.rec .l1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.rec .gname{font-size:15.5px;font-weight:700;line-height:1.35;flex:1}
+.rec .amt{color:#e0453a;font-weight:700;font-size:16px;white-space:nowrap}
+.rec .l2{display:flex;justify-content:space-between;margin-top:7px;font-size:12.5px;color:#8b94a3}
+.rec .l3{margin-top:4px;font-size:12.5px;color:#6b7280}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.tag{font-size:11.5px;padding:3px 7px;border-radius:6px}
+.tg-blue{background:#e8f2fd;color:#2f7cd0}
+.tg-green{background:#e8f7ee;color:#1a9a55}
+.tg-yellow{background:#fdf3d9;color:#b5811a}
+.tg-red{background:#fdeaea;color:#d6483f}
+.tg-gray{background:#f1f3f6;color:#7b8494}
+.acts{display:flex;gap:8px;margin-top:11px;padding-top:11px;border-top:1px dashed #e8ecf2}
+.acts button{flex:1;height:36px;border-radius:9px;font-size:13.5px;border:1px solid}
+.a-copy{color:#8b3fd0;border-color:#d9c4f0;background:#fbf7ff}
+.a-edit{color:#2f7cd0;border-color:#bcd8f2;background:#f7fbff}
+.a-ret{color:#d6483f;border-color:#f3c8c4;background:#fffafa}
+.a-cancel{color:#1a9a55;border-color:#b9e4c9;background:#f8fdfa}
+.a-del{color:#d6483f;border-color:#f3c8c4;background:#fff}
+.r6{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.r6 .b{background:#f7f9fc;border-radius:10px;padding:12px 10px;text-align:center}
+.r6 .b .v{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.r6 .b .k{font-size:12px;color:#8b94a3;margin-top:5px}
+.freightbox{background:#f7f9fc;border-radius:10px;padding:12px 14px;margin-top:10px}
+.freightbox .ft{font-size:14px;font-weight:600;margin-bottom:8px}
+.freightbox .fl{display:flex;justify-content:space-between;font-size:13.5px;color:#5d6675}
+.freightbox .fl b{color:#2f7cd0}
+.ratio3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:10px}
+.ratio3 .b{background:#f7f9fc;border-radius:10px;padding:11px 6px;text-align:center}
+.ratio3 .v{font-size:16px;font-weight:700}
+.ratio3 .k{font-size:11.5px;color:#8b94a3;margin-top:5px}
+.banner{background:linear-gradient(135deg,#f2555c,#e33a45);color:#fff;border-radius:12px;padding:14px 16px;margin-top:12px;
+box-shadow:0 6px 14px rgba(227,58,69,.25)}
+.banner .bt{font-size:14px;display:flex;align-items:center;gap:6px}
+.banner .bv{font-size:26px;font-weight:800;margin:8px 0 4px;letter-spacing:-.5px}
+.banner .bk{font-size:12px;opacity:.9}
+.comprow{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f3f7;font-size:14.5px}
+.comprow:last-child{border-bottom:0}
+.comprow b{color:#2f7cd0;font-weight:600;font-size:13.5px}
+.purplecard{background:linear-gradient(135deg,#7b74d8,#5b53c9);color:#fff;border-radius:12px;padding:15px 16px}
+.purplecard .pt{font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.purplecard .pl{display:flex;justify-content:space-between;font-size:14px;margin-top:6px}
+.purplecard .pl b{font-weight:600}
+.lgcard{background:#f8fafc;border-radius:11px;padding:13px 14px;margin-top:10px}
+.lgcard .h{font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.lgline{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0;color:#5d6675}
+.lgline b{font-weight:600}
+.lgline.ind{padding-left:14px;color:#9aa4b2;font-size:12.5px}
+.lgtotal{display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:10px;border-top:1px solid #e9edf3;font-size:15px;font-weight:700}
+.detail{background:#fff;border-radius:14px;margin:0 12px 12px;padding:14px 16px}
+.ditem{padding:14px 0;border-bottom:1px solid #f0f3f7}
+.ditem:last-child{border-bottom:0}
+.dhead{display:flex;align-items:center;gap:8px;font-size:13px;color:#2f7cd0;font-weight:600;margin-bottom:6px;flex-wrap:wrap}
+.dhead .idx{color:#2f7cd0}
+.dgname{font-size:15.5px;font-weight:700;line-height:1.35;margin-bottom:4px;padding-right:80px;position:relative}
+.dgname .a{position:absolute;right:0;top:0;color:#e0453a;font-size:15.5px}
+.dmeta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#6b7280;flex-wrap:wrap}
+.dpill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:12px;background:#f1f3f6;color:#7b8494;
+border:1px solid transparent}
+.dpill.ok{background:#e8f7ee;color:#1a9a55}
+.dpill.blue{background:#e8f2fd;color:#2f7cd0}
+.dpill.orange{background:#fdf3d9;color:#b5811a}
+.dtoggles{display:flex;gap:8px;margin-top:10px}
+.tgbtn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;background:#f4f6f9;color:#8b94a3;font-size:12.5px}
+.tgbtn.on{background:#e8f7ee;color:#1a9a55}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e9edf3;display:grid;
+grid-template-columns:1fr 1fr 1fr 1fr;padding:6px 0 calc(4px + env(safe-area-inset-bottom));z-index:20}
+.nav .nv{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;color:#9aa4b2;font-size:12.5px}
+.nav .nv .ic{font-size:22px;line-height:1.2}
+.nav .nv.on{color:#2f7cd0;font-weight:600}
+.nav .nv.plus .ic{font-size:28px;font-weight:300;color:#111;margin-top:-6px}
+.nav .nv.plus.on .ic{color:#2f7cd0}
+.ov{position:fixed;inset:0;background:rgba(15,25,40,.45);display:none;align-items:flex-end;z-index:50}
+.ov.on{display:flex}
+.sheet{background:#fff;width:100%;max-height:86vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 14px;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.sheet .x{color:#9aa4b2;font-size:20px;padding:0 4px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(8px);background:rgba(30,38,50,.93);color:#fff;
+padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;pointer-events:none;z-index:60;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.rangebar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.notice{font-size:12.5px;color:#9aa4b2;text-align:center;padding:6px 0 0}
+.listitem{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f7;font-size:14.5px}
+.listitem .rm{color:#d6483f;font-size:13px;padding:4px 8px}
+.empty{text-align:center;color:#a6afbc;font-size:13.5px;padding:22px 0}
+
+.drow2{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-top:6px}
+.dleft{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12.5px;color:#6b7688}
+.dleft span{display:block}
+.dright{text-align:right;flex-shrink:0}
+.fr{font-size:12px;color:#2b83e0;line-height:1.9}
+.fr b{font-weight:600}
+.fr .cd{color:#8fa3bb;font-size:10px}
+.fr.or{color:#d98a2b}
+.fr.due{color:#d98a2b}
+.dexp{margin-top:10px;padding-top:10px;border-top:1px dashed #e6ebf2}
+.costline{display:flex;justify-content:space-between;align-items:center;background:#f4f7fb;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#5a6678;margin-top:8px}
+.costline .pf{color:#189a52;font-weight:600}
+.ititle{font-size:12.5px;color:#6b7688;margin:12px 0 7px}
+.irow{display:flex;align-items:center;gap:9px;border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13px}
+.irow.due{background:#fff1f1;border:1px solid #ffdcdc}
+.irow.ok{background:#eaf8ef;border:1px solid #d2ecdc;color:#1a9a55}
+.cbox{width:18px;height:18px;border-radius:4px;border:1px solid #cfd8e4;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0}
+.irow.ok .cbox{background:#22a35b;border-color:#22a35b}
+.irow.due .ival{color:#e04a45}
+.irow.due .iname{color:#d94a45}
+.iname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dchecks{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
+.tglab{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#6b7688;background:none;padding:2px 0}
+.tglab.on{color:#1a9a55}
+.tglab.on .cbox{background:#22a35b;border-color:#22a35b}
+.dactions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+.dactions button{flex:1;min-width:66px;border:1px solid #dfe5ee;border-radius:9px;background:#fff;padding:8px 6px;font-size:12.5px}
+
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>📦 发货记账本</h1>
+  <div class="sub" id="hdrSub">2026年11月 · 共20单</div>
+</div>
+
+<div class="page on" id="p-home">
+  <div class="monthbar">
+    <button class="circ" onclick="shiftMonth(-1)">◀</button>
+    <div class="mtitle" id="hMonth">2026年11月</div>
+    <button class="circ" onclick="shiftMonth(1)">▶</button>
+  </div>
+  <div class="pillrow">
+    <button class="pill" id="hRangePill" onclick="openRange('home')">📅 <span>自定义日期区间</span></button>
+  </div>
+  <div class="stats" id="hStats"></div>
+  <div class="card">
+    <div class="cardhead"><div class="l">📊 趋势图（可滑动·点击选择月份）</div></div>
+    <div class="chartwrap"><div class="chart" id="hTrend"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead" onclick="toggleSec('year')">
+      <div class="l">📊 年账单</div><span class="caret" id="c-year">▼</span>
+    </div>
+    <div id="b-year">
+      <div class="monthbar" style="padding:12px 0 6px">
+        <button class="circ" onclick="shiftYear(-1)">◀</button>
+        <div class="mtitle" id="yTitle" style="font-size:18px">2026年</div>
+        <button class="circ" onclick="shiftYear(1)">▶</button>
+      </div>
+      <div class="stats" style="margin:6px 0 8px" id="yStats"></div>
+      <div style="font-size:13.5px;color:#8b94a3">全年包邮运费：<b style="color:#2f7cd0" id="yFreight">¥0.00</b></div>
+      <div class="cardhead" style="margin-top:14px;font-size:15px"><div class="l">📈 各月金额分布</div></div>
+      <div class="chartwrap"><div class="chart2" id="yChart"></div></div>
+      <div class="cardhead" style="margin-top:14px;font-size:15px"><div class="l">👤 发货人统计</div></div>
+      <div id="yShippers"></div>
+      <div class="cardhead" style="margin-top:14px;font-size:15px"><div class="l">🏆 全年热销TOP5</div></div>
+      <div id="yTop"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead" onclick="toggleSec('byshipper')">
+      <div class="l">👤 按发货人统计</div><span class="caret" id="c-byshipper">▼</span>
+    </div>
+    <div id="b-byshipper" style="display:none">
+      <div class="field" style="margin-top:12px">
+        <select class="inp" id="bsWho"><option value="__all__">全部发货人</option></select>
+      </div>
+      <div class="rangebar">
+        <input class="inp" type="date" id="bsFrom">
+        <span style="color:#9aa4b2;text-align:center">至</span>
+        <input class="inp" type="date" id="bsTo">
+      </div>
+      <div class="row2" style="margin-top:10px">
+        <button class="save" style="height:42px;font-size:15px" onclick="renderByShipper()">确定筛选</button>
+        <button class="save" style="height:42px;font-size:15px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="resetByShipper()">重置</button>
+      </div>
+      <div id="bsResult" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead" onclick="toggleSec('hot')">
+      <div class="l">🏆 本月热销货物排行</div><span class="caret" id="c-hot">▼</span>
+    </div>
+    <div id="b-hot" style="display:none;padding-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead" onclick="toggleSec('recent')">
+      <div class="l">🕐 最近发货</div><span class="caret" id="c-recent">▼</span>
+    </div>
+    <div id="b-recent" style="display:none;padding-top:4px"></div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead" onclick="toggleSec('data')">
+      <div class="l">🗄️ 数据管理</div><span class="caret" id="c-data">▼</span>
+    </div>
+    <div id="b-data" style="display:none;padding-top:10px">
+      <div style="font-size:13.5px;color:#1a9a55;margin-bottom:12px" id="backupLine">✓ 上次备份：未备份</div>
+      <div class="row2">
+        <button class="save" style="height:44px;font-size:15px" onclick="exportData()">导出数据</button>
+        <button class="save" style="height:44px;font-size:15px;background:#fff;color:#1a9a55;border:1px solid #22a05a;box-shadow:none" onclick="document.getElementById('fileIn').click()">文件导入</button>
+      </div>
+      <button class="save" style="height:42px;font-size:14.5px;margin-top:10px;background:#fff;color:#1a9a55;border:1px solid #22a05a;box-shadow:none" onclick="markBackup()">✓ 我已备份（标记今日）</button>
+      <button class="save" style="height:42px;font-size:14.5px;margin-top:10px;background:#fff;color:#8b3fd0;border:1px solid #b58ae0;box-shadow:none" onclick="openPaste()">📋 粘贴导入（手机推荐）</button>
+      <button class="save" style="height:42px;font-size:14.5px;margin-top:10px;background:#fff;color:#e08a15;border:1px solid #f0b96a;box-shadow:none" onclick="openRecycle()">🗑️ 回收站 <span id="rcCount">0</span></button>
+      <div class="notice">数据自动保存在本机，建议每周导出一次备份</div>
+    </div>
+  </div>
+  <input type="file" id="fileIn" accept=".json,application/json" style="display:none" onchange="importFile(this)">
+</div>
+
+<div class="page" id="p-add">
+  <div class="wrap">
+    <div class="card" style="margin:0">
+      <div class="cardhead" style="font-size:17px"><div class="l">➕ 新增发货记录</div></div>
+      <div class="field" style="margin-top:14px">
+        <div class="lb">发货人</div>
+        <select class="inp" id="aShipper"><option value="">请选择发货人</option></select>
+        <button class="mgr" onclick="openManage('shipper')">▼ 管理发货人</button>
+      </div>
+      <div class="field">
+        <div class="lb">发货状态</div>
+        <div class="seg" id="aStatus">
+          <button class="on" data-v="shipped" onclick="pickSeg('aStatus',this)">已发货</button>
+          <button data-v="pending" onclick="pickSeg('aStatus',this)">待发货</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="lb">货物清单 <button class="gbtn" onclick="addGoodsLine()">＋ 添加货物</button></div>
+        <div id="aItems"></div>
+        <button class="mgr" onclick="openManage('goods')">▼ 管理货物名称</button>
+      </div>
+      <div class="field">
+        <div class="lb">货物总价（元）</div>
+        <input class="inp" id="aTotal" type="number" inputmode="decimal" placeholder="请输入总价" oninput="calcBalance()">
+        <div class="hint">💡 可添加多个货物，每个货物自动带出成本，总价请手动填写总和</div>
+      </div>
+      <div class="field">
+        <div class="lb">付款方式</div>
+        <div class="seg" id="aPay">
+          <button data-v="full" onclick="pickPay('full')">全款</button>
+          <button class="on" data-v="partial" onclick="pickPay('partial')">定金+尾款</button>
+        </div>
+      </div>
+      <div class="field" id="aPayFields">
+        <div class="row2">
+          <div>
+            <div class="lb">定金（元）</div>
+            <input class="inp" id="aDeposit" type="number" inputmode="decimal" placeholder="定金金额" oninput="calcBalance()">
+          </div>
+          <div>
+            <div class="lb">代收尾款（元）</div>
+            <input class="inp" id="aBalance" type="number" readonly placeholder="自动计算" style="background:#f8fafc">
+          </div>
+        </div>
+        <div class="hint">💡 输入总价和定金后自动计算尾款</div>
+      </div>
+      <div class="field">
+        <div class="lb">运费方式</div>
+        <div class="seg" id="aFreightType">
+          <button class="on" data-v="include" onclick="pickSeg('aFreightType',this);syncFreightLabel()">包邮（寄付）</button>
+          <button data-v="collect" onclick="pickSeg('aFreightType',this);syncFreightLabel()">运费到付</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="lb" id="aFreightLb">运费（包邮）</div>
+        <input class="inp" id="aFreight" type="number" inputmode="decimal" placeholder="请输入运费金额">
+      </div>
+      <div class="field">
+        <div class="lb">发货日期</div>
+        <input class="inp" id="aDate" type="date">
+      </div>
+      <div class="field">
+        <div class="lb">发货物流</div>
+        <select class="inp" id="aLogistics"></select>
+        <button class="mgr" onclick="openManage('logistics')">▼ 管理物流公司</button>
+      </div>
+      <div class="field">
+        <div class="lb">物流单号（选填）</div>
+        <input class="inp" id="aTracking" placeholder="请输入物流单号">
+      </div>
+      <div class="field">
+        <div class="lb">备注（选填）</div>
+        <textarea class="inp" id="aRemark" placeholder="添加备注信息"></textarea>
+      </div>
+      <button class="save" onclick="saveRecord()">保存记录</button>
+    </div>
+    <div class="card" style="margin:12px 0 0">
+      <div class="cardhead" onclick="toggleSec('addrecent')">
+        <div class="l">📋 最近录入（5条）</div><span class="caret" id="c-addrecent">▲</span>
+      </div>
+      <div id="b-addrecent" class="recent" style="padding-top:4px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="p-bills">
+  <div class="monthbar">
+    <button class="circ" onclick="shiftMonth(-1)">◀</button>
+    <div class="mtitle" id="bMonth">2026年11月</div>
+    <button class="circ" onclick="shiftMonth(1)">▶</button>
+  </div>
+  <div class="pillrow">
+    <button class="pill" id="bRangePill" onclick="openRange('bills')">📅 <span>自定义日期区间</span></button>
+    <button class="pill orange" id="bPending" onclick="togglePending()">⏳ 只看待发货</button>
+  </div>
+  <div class="searchbox">🔍 <input id="bSearch" placeholder="搜索货物名称/物流单号/备注..." oninput="renderBills()"></div>
+  <div class="chips" id="bChips">
+    <button class="chip on" data-f="all" onclick="pickChip('bills','all')">全部</button>
+    <button class="chip" data-f="full" onclick="pickChip('bills','full')">全款</button>
+    <button class="chip" data-f="partial" onclick="pickChip('bills','partial')">定金+尾款</button>
+    <button class="chip" data-f="unpaid" onclick="pickChip('bills','unpaid')">尾款未收</button>
+    <button class="chip" data-f="paid" onclick="pickChip('bills','paid')">尾款已收</button>
+  </div>
+  <div id="bList"></div>
+</div>
+
+<div class="page" id="p-recon">
+  <div class="monthbar">
+    <button class="circ" onclick="shiftMonth(-1)">◀</button>
+    <div class="mtitle" id="rMonth">2026年11月</div>
+    <button class="circ" onclick="shiftMonth(1)">▶</button>
+  </div>
+  <div class="pillrow">
+    <button class="pill" id="rRangePill" onclick="openRange('recon')">📅 <span>自定义日期区间</span></button>
+  </div>
+  <div class="searchbox">🔍 <input id="rSearch" placeholder="搜索货物/单号/备注/物流/发货人" oninput="renderRecon()"></div>
+  <div class="chips" id="rChips">
+    <button class="chip on" data-f="all" onclick="pickChip('recon','all')">全部</button>
+    <button class="chip" data-f="unrecon" onclick="pickChip('recon','unrecon')">未对账</button>
+    <button class="chip" data-f="balance" onclick="pickChip('recon','balance')">待收尾款</button>
+    <button class="chip" data-f="payment" onclick="pickChip('recon','payment')">货款未结</button>
+    <button class="chip" data-f="profit" onclick="pickChip('recon','profit')">利润未结</button>
+  </div>
+  <div id="rBody"></div>
+</div>
+
+<div class="nav">
+  <button class="nv on" data-p="home" onclick="go('home')"><span class="ic">🏠</span>首页</button>
+  <button class="nv plus" data-p="add" onclick="go('add')"><span class="ic">＋</span>记账</button>
+  <button class="nv" data-p="bills" onclick="go('bills')"><span class="ic">📋</span>账单</button>
+  <button class="nv" data-p="recon" onclick="go('recon')"><span class="ic">✅</span>对账</button>
+</div>
+
+<div class="ov" id="ov" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet">
+    <h3><span id="shTitle">标题</span><button class="x" onclick="closeSheet()">×</button></h3>
+    <div id="shBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== 基础 ===================== */
+const LS_KEY = 'jzb_v3_data';
+const DB_NAME = 'jzb_v3_db';
+const STORE = 'kv';
+let S = {records: [], recycleBin: [], goodsList: [], goodsCost: {}, logisticsCompanies: ['京东物流'], shipperList: [], reconciledMonths: {}};
+let META = {lastBackup: null, ts: 0};
+let curMonth = new Date();
+let curYear = new Date().getFullYear();
+let RANGE = {home: null, bills: null, recon: null};
+let FILTER = {bills: 'all', recon: 'all'};
+let PENDING_ONLY = false;
+let EXPANDED = new Set();
+let SEC = {year: true, byshipper: false, hot: false, recent: false, data: false, addrecent: true, settle: true};
+
+const $ = id => document.getElementById(id);
+const pad2 = n => (n < 10 ? '0' : '') + n;
+const ym = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+const ymTitle = d => d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+const money = n => '¥' + (Number(n) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const plain = n => { const v = Number(n) || 0; return (Math.round(v * 100) / 100).toString(); };
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 1800);
+}
+
+/* ===================== 存储 ===================== */
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE); };
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function idbGet() {
+  try {
+    const db = await idbOpen();
+    return await new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const r = tx.objectStore(STORE).get('data');
+      r.onsuccess = () => res(r.result || null);
+      r.onerror = () => rej(r.error);
+    });
+  } catch (e) { return null; }
+}
+async function saveAll(silent) {
+  META.ts = Date.now();
+  const payload = {state: S, meta: META};
+  try { localStorage.setItem(LS_KEY, JSON.stringify(payload)); } catch (e) {}
+  try {
+    const db = await idbOpen();
+    await new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(payload, 'data');
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  } catch (e) {}
+  if (!silent) {} 
+}
+async function loadAll() {
+  let local = null, idb = null;
+  try { local = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+  idb = await idbGet();
+  let pick = null;
+  if (local && idb) pick = ((idb.meta && idb.meta.ts) || 0) > ((local.meta && local.meta.ts) || 0) ? idb : local;
+  else pick = idb || local;
+  if (pick && pick.state && (pick.state.records || []).length) {
+    S = Object.assign(S, pick.state);
+    META = Object.assign(META, pick.meta || {});
+    normalizeIds();
+    return true;
+  }
+  return false;
+}
+function normalizeIds() {
+  const conv = list => (list || []).forEach(r => { if (r && r.id != null) r.id = String(r.id); });
+  conv(S.records); conv(S.recycleBin);
+}
+function seedFromTag() {
+  try {
+    const raw = JSON.parse($('seedData').textContent);
+    S.records = raw.records || [];
+    S.recycleBin = raw.recycleBin || [];
+    S.goodsList = raw.goodsList || [];
+    S.goodsCost = raw.goodsCost || {};
+    S.logisticsCompanies = raw.logisticsCompanies || ['京东物流'];
+    S.shipperList = raw.shipperList || [];
+    S.reconciledMonths = raw.reconciledMonths || {};
+    normalizeIds();
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ===================== 计算 ===================== */
+const numv = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+function itemCost(r) { return (r.items || []).reduce((s, i) => s + numv(i.cost) * (numv(i.quantity) || 1), 0); }
+function freightCost(r) { return r.freightType === 'include' ? numv(r.freight) : 0; }
+function profitOf(r) { return numv(r.totalPrice) - itemCost(r) - freightCost(r); }
+function balanceOf(r) {
+  if (r.paymentType === 'full') return 0;
+  const b = numv(r.balance);
+  if (b > 0) return b;
+  return Math.max(0, numv(r.totalPrice) - numv(r.deposit));
+}
+function isBalanceDue(r) { return balanceOf(r) > 0 && !r.balancePaid && !r.collectCancelled; }
+function units(r) { return (r.items || []).reduce((s, i) => s + (numv(i.quantity) || 1), 0); }
+function lines(r) { return (r.items || []).length; }
+
+function monthList(d) {
+  const key = ym(d);
+  return S.records.filter(r => (r.shipDate || '').slice(0, 7) === key);
+}
+function inRange(list, r) {
+  const rg = RANGE[r];
+  if (!rg || !rg.from) return list;
+  return list.filter(x => (x.shipDate || '') >= rg.from && (x.shipDate || '') <= rg.to);
+}
+function listFor(page, d) {
+  let l = monthList(d);
+  return inRange(l, page);
+}
+function stats(list) {
+  const paid = l => l.filter(r => !r.paymentSettled).reduce((s, r) => s + itemCost(r), 0);
+  return {
+    count: list.length,
+    total: list.reduce((s, r) => s + numv(r.totalPrice), 0),
+    cost: list.reduce((s, r) => s + itemCost(r), 0),
+    profit: list.reduce((s, r) => s + profitOf(r), 0),
+    freight: list.reduce((s, r) => s + freightCost(r), 0),
+    due: list.reduce((s, r) => s + (isBalanceDue(r) ? balanceOf(r) : 0), 0),
+    dueCount: list.filter(r => isBalanceDue(r)).length,
+    collection: list.reduce((s, r) => s + (r.collectCancelled ? 0 : balanceOf(r)), 0),
+    unsettled: paid(list),
+    unsettledCount: list.filter(r => !r.paymentSettled).length,
+    settledUnits: list.reduce((s, r) => s + (r.items || []).filter(i => i.settled).length, 0),
+    totalUnits: list.reduce((s, r) => s + (r.items || []).length, 0)
+  };
+}
+
+/* ===================== 顶栏 / 导航 ===================== */
+function updateHeader() {
+  const l = monthList(curMonth);
+  $('hdrSub').textContent = ymTitle(curMonth) + ' · 共' + l.length + '单';
+}
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  $('p-' + page).classList.add('on');
+  document.querySelectorAll('.nav .nv').forEach(b => b.classList.toggle('on', b.dataset.p === page));
+  if (page === 'home') renderHome();
+  if (page === 'bills') renderBills();
+  if (page === 'recon') renderRecon();
+  if (page === 'add') renderAddRecent();
+  window.scrollTo(0, 0);
+}
+function shiftMonth(delta) {
+  curMonth = new Date(curMonth.getFullYear(), curMonth.getMonth() + delta, 1);
+  RANGE = {home: null, bills: null, recon: null};
+  renderAll();
+}
+function shiftYear(delta) { curYear += delta; renderHome(); }
+function renderAll() {
+  $('hMonth').textContent = ymTitle(curMonth);
+  $('bMonth').textContent = ymTitle(curMonth);
+  $('rMonth').textContent = ymTitle(curMonth);
+  updateHeader();
+  renderHome(); renderBills(); renderRecon(); renderAddRecent();
+  $('rcCount').textContent = S.recycleBin.length;
+  const bl = $('backupLine');
+  if (META.lastBackup) {
+    const days = Math.floor((new Date(todayStr()) - new Date(META.lastBackup)) / 86400000);
+    bl.textContent = '✓ 上次备份：' + META.lastBackup + '（' + (days <= 0 ? 0 : days) + '天前）';
+  }
+}
+function toggleSec(key) {
+  SEC[key] = !SEC[key];
+  const box = $('b-' + key);
+  if (box) box.style.display = SEC[key] ? 'block' : 'none';
+  const c = $('c-' + key);
+  if (c) c.classList.remove('up');
+}
+
+/* ===================== 首页 ===================== */
+function renderHome() {
+  const list = listFor('home', curMonth);
+  const st = stats(list);
+  $('hMonth').textContent = ymTitle(curMonth);
+  const rg = RANGE.home;
+  const pill = $('hRangePill');
+  pill.classList.toggle('active', !!rg);
+  pill.querySelector('span').textContent = rg ? (rg.from + ' ~ ' + rg.to) : '自定义日期区间';
+
+  $('hStats').innerHTML =
+    statCard('发货单数', st.count, 'blue') +
+    statCard('总金额', money(st.total), 'red', true) +
+    statCard('利润', money(st.profit), 'green', true) +
+    statCard('待收尾款', money(st.due), 'orange', true);
+
+  renderTrend();
+  renderYear();
+  renderByShipper();
+  renderHot();
+  renderRecent();
+}
+
+function statCard(k, v, cls, isMoney) {
+  const val = isMoney ? (typeof v === 'string' ? v : money(v)) : v;
+  return '<div class="stat"><div class="k">' + k + '</div><div class="v ' + cls + '">' + val + '</div></div>';
+}
+
+function renderTrend() {
+  const y = curMonth.getFullYear();
+  const data = [];
+  for (let m = 0; m < 12; m++) {
+    const l = S.records.filter(r => (r.shipDate || '').slice(0, 7) === y + '-' + pad2(m + 1));
+    data.push({m: m + 1, n: l.length, v: l.reduce((s, r) => s + numv(r.totalPrice), 0)});
+  }
+  const max = Math.max(1, ...data.map(d => d.v));
+  const selM = curMonth.getMonth() + 1;
+  $('hTrend').innerHTML = data.map(d => {
+    const h = Math.max(6, Math.round(d.v / max * 112));
+    const sel = d.m === selM;
+    return '<div class="bar' + (sel ? ' sel' : '') + '" onclick="pickMonth(' + d.m + ')">' +
+      '<div class="bv">' + (d.v >= 10000 ? Math.round(d.v / 1000) + 'k' : (d.v ? Math.round(d.v) : '')) + '</div>' +
+      '<div class="bb" style="height:' + h + 'px"></div>' +
+      '<div class="bl">' + d.m + '月</div>' +
+      (d.m === 12 ? '<div class="yr">' + String(y).slice(2) + '年</div>' : '') +
+      '</div>';
+  }).join('');
+  const wrap = $('hTrend').parentNode;
+  setTimeout(() => { wrap.scrollLeft = wrap.scrollWidth; }, 30);
+}
+function pickMonth(m) {
+  curMonth = new Date(curMonth.getFullYear(), m - 1, 1);
+  RANGE = {home: null, bills: null, recon: null};
+  renderAll();
+}
+
+function renderYear() {
+  $('yTitle').textContent = curYear + '年';
+  const list = S.records.filter(r => (r.shipDate || '').slice(0, 4) === String(curYear));
+  const st = stats(list);
+  $('yStats').classList.add('in-card'); $('yStats').innerHTML =
+    statCard('发货单数', st.count, 'blue') +
+    statCard('总金额', money(st.total), 'red', true) +
+    statCard('总利润', money(st.profit), 'green', true) +
+    statCard('待收尾款', money(st.due), 'orange', true);
+  $('yFreight').textContent = money(st.freight);
+
+  const data = [];
+  for (let m = 0; m < 12; m++) {
+    const l = list.filter(r => (r.shipDate || '').slice(0, 7) === curYear + '-' + pad2(m + 1));
+    data.push({m: m + 1, v: l.reduce((s, r) => s + numv(r.totalPrice), 0)});
+  }
+  const max = Math.max(1, ...data.map(d => d.v));
+  $('yChart').innerHTML = data.map(d =>
+    '<div class="bar"><div class="bv">' + (d.v >= 10000 ? Math.round(d.v / 1000) + 'k' : (d.v ? Math.round(d.v) : '') + '') + '</div>' +
+    '<div class="bb" style="height:' + Math.max(5, Math.round(d.v / max * 92)) + 'px"></div>' +
+    '<div class="bl">' + d.m + '</div></div>').join('');
+
+  const bys = {};
+  list.forEach(r => {
+    const k = r.shipper || '未指定';
+    bys[k] = bys[k] || {n: 0, amt: 0, pf: 0};
+    bys[k].n++; bys[k].amt += numv(r.totalPrice); if (!r.isReturn) bys[k].pf += profitOf(r);
+  });
+  const colors = ['#2f7cd0', '#e0453a', '#22a05a', '#e08a15', '#8b3fd0', '#12a5b8', '#c2185b'];
+  const arr = Object.keys(bys).map(k => ({k, ...bys[k]}));
+  $('yShippers').innerHTML = arr.length ? arr.sort((a, b) => b.n - a.n).map((x, idx) =>
+    '<div class="shipperrow"><span class="cbar" style="background:' + colors[idx % colors.length] + '"></span>' +
+    '<span class="nm">👤 ' + x.k + '</span><span class="cnt">' + x.n + '单</span>' +
+    '<span class="amt">' + money(x.amt) + '</span><span class="pf">' + money(x.pf) + '</span></div>').join('')
+    : '<div class="empty">暂无数据</div>';
+
+  const byg = {};
+  list.forEach(r => { const k = r.goodsName || '未命名'; byg[k] = (byg[k] || 0) + 1; });
+  const top = Object.keys(byg).map(k => ({k, n: byg[k]})).sort((a, b) => b.n - a.n).slice(0, 5);
+  const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+  $('yTop').innerHTML = top.length ? top.map((x, i) =>
+    '<div class="toprow"><span class="rk">' + medal[i] + '</span><span class="nm">' + x.k + '</span><span class="ct">' + x.n + '次</span></div>').join('')
+    : '<div class="empty">暂无数据</div>';
+}
+
+function renderByShipper() {
+  const sel = $('bsWho');
+  const cur = sel.value;
+  const names = S.shipperList.slice();
+  sel.innerHTML = '<option value="__all__">全部发货人</option>' + names.map(n => '<option value="' + n + '">' + n + '</option>').join('');
+  let picked = names.indexOf(cur) >= 0 ? cur : '__all__';
+  sel.value = picked;
+  const cards = $('bsResult');
+  if (!cards.dataset.init) {
+    cards.dataset.init = '1';
+    $('bsFrom').value = curYear + '-01-01';
+    $('bsTo').value = todayStr();
+    renderByShipper();
+    return;
+  }
+  let from = $('bsFrom').value, to = $('bsTo').value;
+  const list = S.records.filter(r => {
+    const d = r.shipDate || '';
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (picked !== '__all__' && r.shipper !== picked) return false;
+    return true;
+  });
+  const bys = {};
+  list.forEach(r => {
+    const k = r.shipper || '未指定';
+    bys[k] = bys[k] || {n: 0, amt: 0, pf: 0, due: 0};
+    bys[k].n++; bys[k].amt += numv(r.totalPrice); if (!r.isReturn) bys[k].pf += profitOf(r);
+    if (isBalanceDue(r)) bys[k].due += balanceOf(r);
+  });
+  const arr = Object.keys(bys).map(k => ({k, ...bys[k]}));
+  cards.innerHTML = arr.length ? arr.sort((a, b) => b.amt - a.amt).map(x =>
+    '<div class="sumshipper" style="display:block;background:#f7f9fc;border-radius:10px;padding:12px 14px;margin-bottom:9px">' +
+    '<div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px"><span>👤 ' + x.k + '</span><span>' + x.n + '单</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13.5px;color:#5d6675;padding:2px 0"><span>总金额</span><b style="color:#e0453a">' + money(x.amt) + '</b></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13.5px;color:#5d6675;padding:2px 0"><span>利润</span><b style="color:#16a34a">' + money(x.pf) + '</b></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13.5px;color:#5d6675;padding:2px 0"><span>待收尾款</span><b style="color:#e08a15">' + money(x.due) + '</b></div>' +
+    '</div>').join('') : '<div class="empty">该区间暂无记录</div>';
+}
+function resetByShipper() {
+  $('bsWho').value = '__all__';
+  $('bsFrom').value = curYear + '-01-01';
+  $('bsTo').value = todayStr();
+  renderByShipper();
+}
+
+function renderHot() {
+  const list = monthList(curMonth);
+  const byg = {};
+  list.forEach(r => { const k = r.goodsName || '未命名'; byg[k] = byg[k] || {n: 0, amt: 0}; byg[k].n++; byg[k].amt += numv(r.totalPrice); });
+  const arr = Object.keys(byg).map(k => ({k, ...byg[k]})).sort((a, b) => b.n - a.n).slice(0, 6);
+  const max = Math.max(1, ...arr.map(x => x.n));
+  const medal = ['🥇', '🥈', '🥉'];
+  $('b-hot').innerHTML = arr.length ? arr.map((x, i) =>
+    '<div class="rankbar"><div class="t"><b>' + (medal[i] || (i + 1) + '.') + ' ' + x.k + '</b><span>' + x.n + '单 · ' + money(x.amt) + '</span></div>' +
+    '<div class="track"><i style="width:' + Math.round(x.n / max * 100) + '%"></i></div></div>').join('')
+    : '<div class="empty">本月暂无记录</div>';
+}
+
+function renderRecent() {
+  const list = S.records.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '') || (b.shipDate || '').localeCompare(a.shipDate || '')).slice(0, 5);
+  $('b-recent').innerHTML = list.map(r => {
+    let tags = '';
+    if (r.freightType === 'include') tags += '<span class="tag tg-blue">包邮现付 ' + money(r.freight) + '</span>';
+    else tags += '<span class="tag tg-yellow">运费到付</span>';
+    tags += r.paymentType === 'full' ? '<span class="tag tg-green">全款</span>'
+      : '<span class="tag tg-yellow">定金' + money(r.deposit) + ' + 尾款' + money(balanceOf(r)) + '</span>';
+    if (isBalanceDue(r)) tags += '<span class="tag tg-red">尾款未收</span>';
+    if (r.isReturn) tags += '<span class="tag tg-red">退货</span>';
+    return '<div class="rec" style="margin:0 0 10px">' + recInner(r, tags) + '</div>';
+  }).join('') || '<div class="empty">暂无记录</div>';
+}
+
+function recInner(r, tags) {
+  const remark = r.remark ? '<div class="l3" style="margin-top:6px;color:#8b6b1a">✏️ ' + esc(r.remark) + '</div>' : '';
+  const status = r.shipStatus === 'pending' ? '<span class="tag tg-gray">待发货</span>' : '';
+  return '<div class="l1"><div class="gname">' + esc(r.goodsName) + '</div><div class="amt">' + money(r.totalPrice) + '</div></div>' +
+    '<div class="l2"><span>📅 发货 ' + (r.shipDate || '') + '</span><span>👤 ' + esc(r.shipper || '') + '</span></div>' +
+    '<div class="l3">🚚 ' + esc(r.logisticsCompany || '') + '</div>' +
+    '<div class="tags">' + tags + status + '</div>' + remark;
+}
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+/* ===================== 记账页 ===================== */
+function fillSelects() {
+  const sh = $('aShipper');
+  sh.innerHTML = '<option value="">请选择发货人</option>' + S.shipperList.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  const lg = $('aLogistics');
+  lg.innerHTML = S.logisticsCompanies.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('');
+  if (S.logisticsCompanies.indexOf('京东物流') >= 0) lg.value = '京东物流';
+  else if (S.logisticsCompanies.length) lg.value = S.logisticsCompanies[0];
+}
+function goodsOptions() {
+  return S.goodsList.map(n => '<option value="' + esc(n) + '">').join('');
+}
+function addGoodsLine(name, cost, qty) {
+  const wrap = $('aItems');
+  const row = document.createElement('div');
+  row.className = 'goodsline';
+  row.innerHTML = '<input class="inp gname" list="goodsDL" placeholder="选择或输入货物名称" value="' + esc(name || '') + '">' +
+    '<span class="x">×</span>' +
+    '<input class="num qty" type="number" inputmode="numeric" value="' + (qty || 1) + '">' +
+    '<input class="num cost" type="number" inputmode="decimal" placeholder="成本" value="' + (cost === 0 ? '0' : (cost || '')) + '">' +
+    '<button class="del" onclick="this.parentNode.remove();saveDraft()">×</button>';
+  wrap.appendChild(row);
+  const g = row.querySelector('.gname'), c = row.querySelector('.cost');
+  g.addEventListener('change', () => {
+    const nm = g.value.trim();
+    if (nm && S.goodsCost[nm] != null && !c.value) c.value = S.goodsCost[nm];
+    saveDraft();
+  });
+  row.querySelectorAll('input').forEach(i => i.addEventListener('input', saveDraft));
+  return row;
+}
+function pickSeg(id, btn) {
+  const box = $(id);
+  box.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  saveDraft();
+}
+function segVal(id) { const b = $(id).querySelector('button.on'); return b ? b.dataset.v : ''; }
+function pickPay(v) {
+  const box = $('aPay');
+  box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $('aPayFields').style.display = v === 'partial' ? 'block' : 'none';
+  if (v === 'full') { $('aDeposit').value = ''; $('aBalance').value = ''; }
+  calcBalance();
+  saveDraft();
+}
+function syncFreightLabel() {
+  $('aFreightLb').textContent = segVal('aFreightType') === 'include' ? '运费（包邮）' : '运费（到付）';
+}
+function calcBalance() {
+  if (segVal('aPay') === 'full') { $('aBalance').value = ''; return; }
+  const t = numv($('aTotal').value), d = numv($('aDeposit').value);
+  if (t > 0 && d > 0) $('aBalance').value = Math.max(0, Math.round((t - d) * 100) / 100);
+}
+
+const DRAFT_KEY = 'jzb_v3_draft';
+function saveDraft() {
+  try {
+    const items = [];
+    document.querySelectorAll('#aItems .goodsline').forEach(r => {
+      items.push({name: r.querySelector('.gname').value, cost: r.querySelector('.cost').value, qty: r.querySelector('.qty').value});
+    });
+    const d = {
+      shipper: $('aShipper').value, status: segVal('aStatus'), items,
+      total: $('aTotal').value, pay: segVal('aPay'), deposit: $('aDeposit').value,
+      freightType: segVal('aFreightType'), freight: $('aFreight').value,
+      date: $('aDate').value, logistics: $('aLogistics').value,
+      tracking: $('aTracking').value, remark: $('aRemark').value
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+  } catch (e) {}
+}
+function restoreDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+    if (!d) return;
+    const has = (d.items || []).some(i => (i.name || '').trim()) || d.total || d.remark;
+    if (!has) return;
+    $('aShipper').value = d.shipper || '';
+    $('aStatus').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === (d.status || 'shipped')));
+    $('aItems').innerHTML = '';
+    (d.items || []).forEach(i => addGoodsLine(i.name, i.cost, i.qty));
+    if (!(d.items || []).length) addGoodsLine('', '', 1);
+    $('aTotal').value = d.total || '';
+    pickPay(d.pay || 'partial');
+    $('aDeposit').value = d.deposit || '';
+    $('aFreightType').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === (d.freightType || 'include')));
+    syncFreightLabel();
+    $('aFreight').value = d.freight || '';
+    $('aDate').value = d.date || todayStr();
+    if (d.logistics) $('aLogistics').value = d.logistics;
+    $('aTracking').value = d.tracking || '';
+    $('aRemark').value = d.remark || '';
+    calcBalance();
+    toast('已恢复上次未完成的记录');
+  } catch (e) {}
+}
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
+
+function saveRecord() {
+  const shipper = $('aShipper').value;
+  if (!shipper) { toast('请选择发货人'); return; }
+  const rows = [];
+  document.querySelectorAll('#aItems .goodsline').forEach(r => {
+    const name = r.querySelector('.gname').value.trim();
+    const cost = numv(r.querySelector('.cost').value);
+    const qty = Math.max(1, Math.round(numv(r.querySelector('.qty').value) || 1));
+    if (name) rows.push({name, cost, quantity: qty, settled: false});
+  });
+  if (!rows.length) { toast('请至少添加一个货物'); return; }
+  const total = numv($('aTotal').value);
+  if (total <= 0) { toast('请输入货物总价'); return; }
+  const pay = segVal('aPay');
+  let deposit = pay === 'full' ? total : numv($('aDeposit').value);
+  if (pay === 'partial' && deposit > total) deposit = total;
+  const balance = pay === 'full' ? 0 : Math.max(0, total - deposit);
+  const date = $('aDate').value || todayStr();
+  const rec = {
+    id: 'r' + Date.now() + Math.floor(Math.random() * 1000),
+    shipper, goodsName: rows.map(r => r.name).join(' + '),
+    costPrice: rows.reduce((s, r) => s + r.cost * r.quantity, 0),
+    items: rows, totalPrice: total,
+    freightType: segVal('aFreightType'), freight: numv($('aFreight').value),
+    paymentType: pay, deposit, balance,
+    balancePaid: pay === 'full', collectCancelled: false,
+    shipDate: date, orderDate: date,
+    logisticsCompany: $('aLogistics').value || '京东物流',
+    trackingNumber: $('aTracking').value.trim(), remark: $('aRemark').value.trim(),
+    logisticsReconciled: false, paymentSettled: false, profitSettled: false,
+    shipStatus: segVal('aStatus') || 'shipped',
+    isReturn: false, returnFreight: 0, returnFreightPayer: '', returnLogistics: '',
+    createdAt: new Date().toISOString()
+  };
+  S.records.unshift(rec);
+  saveAll();
+  toast('已保存：' + rec.goodsName);
+  $('aItems').innerHTML = '';
+  addGoodsLine('', '', 1);
+  $('aTotal').value = ''; $('aDeposit').value = ''; $('aBalance').value = ''; $('aFreight').value = '';
+  $('aTracking').value = ''; $('aRemark').value = '';
+  clearDraft();
+  renderAll();
+}
+
+function renderAddRecent() {
+  const list = S.records.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 5);
+  $('b-addrecent').innerHTML = list.length ? list.map(r =>
+    '<div class="item"><div class="t1"><span>' + esc(r.goodsName) + '</span><span class="m">' + money(r.totalPrice) + '</span></div>' +
+    '<div class="t2">📅 ' + (r.shipDate || '') + ' · 👤 ' + esc(r.shipper || '') + ' · ' + (r.paymentType === 'full' ? '全款' : '定金+尾款') + '</div></div>').join('')
+    : '<div class="empty">暂无记录</div>';
+}
+function toggleSecInit() {
+  Object.keys(SEC).forEach(k => {
+    const box = $('b-' + k); if (box) box.style.display = SEC[k] ? 'block' : 'none';
+    const c = $('c-' + k); if (c) c.classList.remove('up');
+  });
+}
+
+/* ===================== 账单页 ===================== */
+function pickChip(which, f) {
+  FILTER[which] = f;
+  const box = which === 'bills' ? $('bChips') : $('rChips');
+  box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.f === f));
+  if (which === 'bills') renderBills(); else renderRecon();
+}
+function togglePending() {
+  PENDING_ONLY = !PENDING_ONLY;
+  $('bPending').classList.toggle('active', PENDING_ONLY);
+  renderBills();
+}
+function renderBills() {
+  const list0 = listFor('bills', curMonth);
+  const q = ($('bSearch').value || '').trim().toLowerCase();
+  let list = list0.filter(r => {
+    if (PENDING_ONLY && r.shipStatus !== 'pending') return false;
+    if (q) {
+      const hay = [r.goodsName, r.trackingNumber, r.remark, r.logisticsCompany, r.shipper].join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    const f = FILTER.bills;
+    if (f === 'full' && r.paymentType !== 'full') return false;
+    if (f === 'partial' && r.paymentType !== 'partial') return false;
+    if (f === 'unpaid' && !isBalanceDue(r)) return false;
+    if (f === 'paid' && !(r.paymentType === 'partial' && r.balancePaid)) return false;
+    return true;
+  });
+  list.sort((a, b) => (b.shipDate || '').localeCompare(a.shipDate || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const st = stats(list);
+  const bySh = {};
+  list.forEach(r => bySh[r.shipper] = (bySh[r.shipper] || 0) + 1);
+  const shChips = Object.keys(bySh).sort().map(k => '<span class="shipchip">' + esc(k) + ' (' + bySh[k] + '单)</span>').join('');
+  const rg = RANGE.bills;
+  $('bRangePill').classList.toggle('active', !!rg);
+  $('bRangePill').querySelector('span').textContent = rg ? (rg.from + ' ~ ' + rg.to) : '自定义日期区间';
+
+  let html = '<div class="sumbox"><div class="sumhead"><div class="t">' + ymTitle(curMonth) + '</div><div class="s">' + st.count + '单 · <b>' + money(st.total) + '</b></div></div>';
+  html += shChips ? '<div class="sumshipper">发货人：' + shChips + '</div>' : '';
+  html += '</div>';
+  html += list.map(r => billCard(r)).join('') || '<div class="empty">没有符合条件的记录</div>';
+  $('bList').innerHTML = html;
+}
+function billCard(r) {
+  let tags = '';
+  if (r.freightType === 'include') tags += '<span class="tag tg-blue">包邮现付 ' + money(r.freight) + '</span>';
+  else tags += '<span class="tag tg-yellow">运费到付' + (numv(r.freight) ? ' ' + money(r.freight) : '') + '</span>';
+  if (r.paymentType === 'full') tags += '<span class="tag tg-green">全款</span>';
+  else {
+    tags += '<span class="tag tg-yellow">定金' + money(r.deposit) + ' + 尾款' + money(balanceOf(r)) + '</span>';
+    if (r.collectCancelled) tags += '<span class="tag tg-gray">代收已取消</span>';
+    else if (r.balancePaid) tags += '<span class="tag tg-green">尾款已收</span>';
+    else tags += '<span class="tag tg-red">尾款未收</span>';
+  }
+  if (r.isReturn) tags += '<span class="tag tg-red">退货</span>';
+  if (r.shipStatus === 'pending') tags += '<span class="tag tg-gray">待发货</span>';
+  const remark = r.remark ? '<div class="l3" style="margin-top:6px;color:#8b6b1a">📝 ' + esc(r.remark) + '</div>' : '';
+  const cancelBtn = (r.paymentType === 'partial' && !r.balancePaid && !r.collectCancelled && !r.isReturn)
+    ? '<button class="a-cancel" onclick="cancelCollect(\'' + r.id + '\')">代收取消</button>' : '';
+  return '<div class="rec">' +
+    '<div class="l1"><div class="gname">' + esc(r.goodsName) + '</div><div class="amt">' + money(r.totalPrice) + '</div></div>' +
+    '<div class="l2"><span>📅 发货 ' + (r.shipDate || '') + '</span><span>👤 ' + esc(r.shipper || '') + '</span></div>' +
+    '<div class="l3">🚚 ' + esc(r.logisticsCompany || '') + (r.trackingNumber ? ' · ' + esc(r.trackingNumber) : '') + '</div>' +
+    '<div class="tags">' + tags + '</div>' + remark +
+    '<div class="acts">' +
+    '<button class="a-copy" onclick="copyRecord(\'' + r.id + '\')">📋 复制</button>' +
+    '<button class="a-edit" onclick="openEdit(\'' + r.id + '\')">编辑</button>' +
+    '<button class="a-ret" onclick="openReturn(\'' + r.id + '\')">↩ 退货</button>' +
+    cancelBtn +
+    '<button class="a-del" onclick="delRecord(\'' + r.id + '\')">删除</button>' +
+    '</div></div>';
+}
+function copyTextOf(r) {
+  const pay = r.paymentType === 'full' ? '全款' : ('定金' + plain(r.deposit) + '代收' + plain(balanceOf(r)));
+  const fr = r.freightType === 'include' ? '包邮' : '不包邮';
+  return [r.shipDate, r.shipper, r.goodsName, plain(r.totalPrice), fr, pay, r.logisticsCompany, '运费' + plain(r.freight)].join(' ');
+}
+function copyRecord(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  const txt = copyTextOf(r);
+  const done = () => toast('已复制，可直接粘贴发送');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done).catch(() => fallbackCopy(txt, done));
+  } else fallbackCopy(txt, done);
+}
+function fallbackCopy(txt, done) {
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败，请长按选择'); }
+  document.body.removeChild(ta);
+}
+function delRecord(id) {
+  if (!confirm('删除后可在回收站找回，确定删除？')) return;
+  const i = S.records.findIndex(x => String(x.id) === String(id));
+  if (i < 0) return;
+  const r = S.records.splice(i, 1)[0];
+  r.deletedAt = new Date().toISOString();
+  S.recycleBin.unshift(r);
+  saveAll(); renderAll(); toast('已移入回收站');
+}
+function cancelCollect(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  if (!confirm('确认取消代收尾款？取消后该单不再计入待收尾款。')) return;
+  r.collectCancelled = true;
+  saveAll(); renderAll(); toast('已取消代收');
+}
+
+/* ===================== 对账页 ===================== */
+function renderRecon() {
+  const list0 = listFor('recon', curMonth);
+  const q = ($('rSearch').value || '').trim().toLowerCase();
+  let list = list0.filter(r => {
+    if (q) {
+      const hay = [r.goodsName, r.trackingNumber, r.remark, r.logisticsCompany, r.shipper].join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    const f = FILTER.recon;
+    if (f === 'unrecon' && r.logisticsReconciled && r.paymentSettled) return false;
+    if (f === 'balance' && !isBalanceDue(r)) return false;
+    if (f === 'payment' && r.paymentSettled) return false;
+    if (f === 'profit' && (r.profitSettled || r.shipper === 'S')) return false;
+    return true;
+  });
+  list.sort((a, b) => (a.shipDate || '').localeCompare(b.shipDate || ''));
+  const st = stats(list);
+  const mk = ym(curMonth);
+  const reconciled = !!S.reconciledMonths[mk];
+  const rg = RANGE.recon;
+  $('rRangePill').classList.toggle('active', !!rg);
+  $('rRangePill').querySelector('span').textContent = rg ? (rg.from + ' ~ ' + rg.to) : '自定义日期区间';
+
+  const logisticN = list.filter(r => r.logisticsReconciled).length;
+  const paymentN = list.filter(r => r.paymentSettled).length;
+  const profitN = list.filter(r => r.profitSettled).length;
+
+  const unpaidCost = list.reduce((s, r) => s + (r.items || []).filter(i => !i.settled).reduce((a, i) => a + numv(i.cost), 0), 0);
+  const settledU = st.settledUnits, totalU = st.totalUnits;
+
+  let html = '';
+  html += '<div class="sumbox">' +
+    '<div class="sumhead"><div class="t">' + ymTitle(curMonth) + '对账单</div>' +
+    '<button class="pill ' + (reconciled ? '' : 'orange') + '" style="padding:6px 12px;font-size:13px" onclick="toggleReconciled()">' + (reconciled ? '✓ 已对账' : '○ 未对账') + '</button></div>' +
+    '<div class="r6">' +
+    r6box('发货单数', st.count, 'blue', false) +
+    r6box('货值总额', money(st.total), 'red', true) +
+    r6box('货物总成本', money(st.cost), 'purple', true) +
+    r6box('待结算成本(' + st.unsettledCount + '单)', money(st.unsettled), 'orange', true) +
+    r6box('总利润', money(st.profit), 'green', true) +
+    r6box('待收尾款(' + st.dueCount + '单)', money(st.due), 'orange', true) +
+    '</div>' +
+    '<div class="freightbox"><div class="ft">✈️ 运费统计</div>' +
+    '<div class="fl"><span>包邮运费（我们付）</span><b>' + money(st.freight) + '</b></div></div>' +
+    '<div class="ratio3">' +
+    '<div class="b"><div class="v blue">' + logisticN + '/' + list.length + '</div><div class="k">🚚 物流对账</div></div>' +
+    '<div class="b"><div class="v green">' + paymentN + '/' + list.length + '</div><div class="k">💰 货款结算</div></div>' +
+    '<div class="b"><div class="v purple">' + profitN + '/' + list.length + '</div><div class="k">💎 利润结算</div></div>' +
+    '</div>' +
+    '<div class="banner"><div class="bt">⚠️ 待结货款（结给公司）</div>' +
+    '<div class="bv">' + money(unpaidCost) + '</div>' +
+    '<div class="bk">已结 ' + settledU + '/' + totalU + ' 台 · 未结货物成本</div></div>' +
+    '</div>';
+
+  const byLg = {};
+  list.forEach(r => {
+    const k = r.logisticsCompany || '未指定';
+    byLg[k] = byLg[k] || {n: 0, freight: 0, collect: 0, paid: 0, pending: 0, full: 0, partial: 0, total: 0};
+    byLg[k].n++; byLg[k].freight += numv(r.freight); byLg[k].total += numv(r.totalPrice);
+    if (r.paymentType === 'full') byLg[k].full++; else byLg[k].partial++;
+    if (!r.collectCancelled) {
+      byLg[k].collect += balanceOf(r);
+      if (r.balancePaid) byLg[k].paid += balanceOf(r); else byLg[k].pending += balanceOf(r);
+    }
+  });
+  const lgKeys = Object.keys(byLg).sort((a, b) => byLg[b].n - byLg[a].n);
+
+  html += '<div class="card"><div class="cardhead"><div class="l">🏢 物流公司分布</div></div>';
+  html += lgKeys.map(k => '<div class="comprow"><span>' + esc(k) + '</span><b>' + byLg[k].n + ' 单 · 运费' + money(byLg[k].freight) + '</b></div>').join('') || '<div class="empty">暂无</div>';
+  html += '</div>';
+
+  html += '<div class="card"><div class="cardhead" onclick="toggleSec(\'settle\')"><div class="l">🏦 物流对账结算</div><span class="caret" id="c-settle">▼</span></div>';
+  html += '<div id="b-settle">';
+  html += '<div class="purplecard" style="margin-top:10px"><div class="pt">📊 本月物流汇总</div>' +
+    '<div class="pl"><span>代收尾款总额</span><b>' + money(st.collection) + '</b></div>' +
+    '<div class="pl"><span>总运费</span><b>' + money(st.freight) + '</b></div></div>';
+  html += lgKeys.map(k => {
+    const x = byLg[k];
+    const settle = x.collect - x.freight;
+    return '<div class="lgcard"><div class="h">🚚 ' + esc(k) + '</div>' +
+      '<div class="lgline"><span>发货单数</span><b>' + x.n + ' 单（全款' + x.full + ' · 定金+尾款' + x.partial + '）</b></div>' +
+      '<div class="lgline"><span>运费总额</span><b style="color:#8b3fd0">' + money(x.freight) + '</b></div>' +
+      '<div class="lgline"><span>代收尾款总额</span><b style="color:#b5811a">' + money(x.collect) + '</b></div>' +
+      '<div class="lgline ind"><span>└ 已收</span><b style="color:#16a34a">' + money(x.paid) + '</b></div>' +
+      '<div class="lgline ind"><span>└ 待收</span><b style="color:#d6483f">' + money(x.pending) + '</b></div>' +
+      '<div class="lgtotal"><span>应结算货款</span><span style="color:' + (settle >= 0 ? '#16a34a' : '#d6483f') + '">' + (settle >= 0 ? '+' + money(settle) : '-¥' + (Math.abs(settle)).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2})) + '</span></div></div>';
+  }).join('');
+  html += '</div></div>';
+
+  html += '<div class="detail"><div class="cardhead"><div class="l">📋 发货明细</div></div>' +
+    '<div style="font-size:12.5px;color:#9aa4b2;margin:8px 0 2px">按发货日期排序，共 ' + list.length + ' 条，点击编辑可修改数据</div>';
+  html += list.map((r, i) => reconItem(r, i + 1)).join('') || '<div class="empty">暂无记录</div>';
+  html += '</div>';
+  $('rBody').innerHTML = html;
+  if (SEC.settle === false) { const b = $('b-settle'); if (b) b.style.display = 'none'; }
+}
+function r6box(k, v, cls, isMoney) {
+  return '<div class="b"><div class="v ' + cls + '">' + v + '</div><div class="k">' + k + '</div></div>';
+}
+function reconItem(r, idx) {
+  const id = r.id;
+  const exp = EXPANDED.has(String(id));
+  const itemLines = (r.items || []).length;
+  const settledLines = (r.items || []).filter(i => i.settled).length;
+  const showProfit = r.shipper !== 'S';
+  const cost = itemCost(r), pf = profitOf(r);
+  let tags = '';
+  if (r.paymentType === 'full') tags += '<span class="tag tg-yellow">全款</span>';
+  if (r.remark) tags += '<span class="tag tg-yellow">有备注</span>';
+  if (r.isReturn) tags += '<span class="tag tg-red">退货</span>';
+  if (r.shipStatus === 'pending') tags += '<span class="tag tg-gray">待发货</span>';
+  const settTag = settledLines > 0 ? '<span class="dpill ok">✓ 货款已结 ' + settledLines + '/' + itemLines + ' 台</span>' : '';
+  const fTag = r.freightType === 'include'
+    ? '<div class="fr">包邮 <b>' + money(r.freight) + '</b> <span class="cd">▼</span></div>'
+    : '<div class="fr due">运费到付' + (numv(r.freight) ? ' ' + money(r.freight) : '') + '</div>';
+  const bTag = (balanceOf(r) > 0 && !r.collectCancelled) ? '<div class="fr or">代收 <b>' + money(balanceOf(r)) + '</b></div>' : '';
+  let payTags = '';
+  if (r.paymentType !== 'full') {
+    payTags = '<span class="tag tg-yellow">定金' + money(r.deposit) + ' + 尾款' + money(balanceOf(r)) + '</span>';
+    payTags += r.collectCancelled ? '<span class="tag tg-gray">代收已取消</span>' : (r.balancePaid ? '<span class="tag tg-green">尾款已收</span>' : '<span class="tag tg-red">尾款未收</span>');
+  }
+  const itemsHtml = (r.items || []).map((it, i) =>
+    '<div class="irow ' + (it.settled ? 'ok' : 'due') + '" onclick="toggleItem(\'' + id + '\',' + i + ')">' +
+    '<span class="cbox">' + (it.settled ? '✓' : '') + '</span>' +
+    '<span class="iname">' + esc(it.name) + '</span>' +
+    '<span class="ival">' + money(numv(it.cost) * (numv(it.quantity) || 1)) + '</span></div>').join('');
+  const expHtml = exp ? (
+    '<div class="dexp">' +
+    (payTags ? '<div class="tags">' + payTags + '</div>' : '') +
+    '<div class="costline"><span>总成本：' + money(cost) + '</span>' + (showProfit ? '<span class="pf">💰 利润：' + money(pf) + '</span>' : '') + '</div>' +
+    (itemLines ? '<div class="ititle">🧱 货物明细（可单独结算货款）</div>' + itemsHtml : '') +
+    '<div class="dchecks">' +
+    chkBtn(r, 'logistics', '物流对账', r.logisticsReconciled) +
+    chkBtn(r, 'payment', '货款结算', r.paymentSettled) +
+    (showProfit ? chkBtn(r, 'profit', '利润结算', r.profitSettled) : '') +
+    '</div>' +
+    '<div class="dactions">' +
+    '<button class="a-copy" onclick="copyRecord(\'' + id + '\')">📋 复制</button>' +
+    '<button class="a-edit" onclick="openEdit(\'' + id + '\')">编辑</button>' +
+    '<button class="a-ret" onclick="openReturn(\'' + id + '\')">↩ 退货</button>' +
+    (r.paymentType !== 'full' && !r.balancePaid && !r.collectCancelled ? '<button class="a-cancel" onclick="cancelCollect(\'' + id + '\')">代收取消</button>' : '') +
+    '<button class="a-del" onclick="delRecord(\'' + id + '\')">删除</button>' +
+    '</div></div>'
+  ) : '';
+  const pills = '<div class="dtoggles">' +
+    tgBtn(r, 'logistics', '物流', r.logisticsReconciled) +
+    tgBtn(r, 'payment', '货款', r.paymentSettled) +
+    (showProfit ? tgBtn(r, 'profit', '利润', r.profitSettled) : '') + '</div>';
+  return '<div class="ditem' + (exp ? ' open' : '') + '">' +
+    '<div onclick="toggleDetail(\'' + id + '\')">' +
+    '<div class="dhead"><span class="idx">' + idx + '. ' + (r.shipDate || '') + '</span>' + tags + '</div>' +
+    '<div class="dgname">' + esc(r.goodsName) + '<span class="a">' + money(r.totalPrice) + '</span></div>' +
+    '<div class="drow2"><div class="dleft">' + settTag + '</div><div class="dright">' + fTag + '</div></div>' +
+    '<div class="drow2"><div class="dleft"><span>🚚 ' + esc(r.logisticsCompany || '') + '</span><span>👤 ' + esc(r.shipper || '') + '</span></div><div class="dright">' + bTag + '</div></div>' +
+    '</div>' + expHtml + (exp ? '' : pills) + '</div>';
+}
+function tgBtn(r, type, label, on) {
+  return '<button class="tgbtn' + (on ? ' on' : '') + '" onclick="toggleFlag(\'' + r.id + '\',\'' + type + '\')">' + (on ? '✓ ' : '○ ') + label + '</button>';
+}
+function chkBtn(r, type, label, on) {
+  return '<button class="tglab' + (on ? ' on' : '') + '" onclick="toggleFlag(\'' + r.id + '\',\'' + type + '\')"><span class="cbox">' + (on ? '✓' : '') + '</span>' + label + '</button>';
+}
+function toggleDetail(id) {
+  const k = String(id);
+  if (EXPANDED.has(k)) EXPANDED.delete(k); else EXPANDED.add(k);
+  renderRecon();
+}
+function toggleItem(id, idx) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  const it = (r.items || [])[idx]; if (!it) return;
+  it.settled = !it.settled;
+  r.paymentSettled = (r.items || []).length > 0 && (r.items || []).every(x => x.settled);
+  saveAll(); renderRecon(); renderHome();
+}
+function toggleFlag(id, type) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  if (type === 'logistics') r.logisticsReconciled = !r.logisticsReconciled;
+  if (type === 'payment') { r.paymentSettled = !r.paymentSettled; (r.items || []).forEach(i => i.settled = r.paymentSettled); }
+  if (type === 'profit') r.profitSettled = !r.profitSettled;
+  saveAll(); renderRecon(); renderHome();
+}
+function toggleReconciled() {
+  const mk = ym(curMonth);
+  S.reconciledMonths[mk] = !S.reconciledMonths[mk];
+  saveAll(); renderRecon(); toast(S.reconciledMonths[mk] ? '本月已标记为已对账' : '已取消对账标记');
+}
+
+/* ===================== 弹窗 ===================== */
+function openSheet(title, html) {
+  $('shTitle').textContent = title;
+  $('shBody').innerHTML = html;
+  $('ov').classList.add('on');
+}
+function closeSheet() { $('ov').classList.remove('on'); }
+
+let rangeTarget = 'home';
+function openRange(page) {
+  rangeTarget = page;
+  const rg = RANGE[page];
+  const defFrom = rg ? rg.from : (curMonth.getFullYear() + '-' + pad2(curMonth.getMonth() + 1) + '-01');
+  const defTo = rg ? rg.to : todayStr();
+  openSheet('自定义日期区间',
+    '<div class="rangebar"><input class="inp" type="date" id="rgFrom" value="' + defFrom + '"><span style="color:#9aa4b2;text-align:center">至</span><input class="inp" type="date" id="rgTo" value="' + defTo + '"></div>' +
+    '<div class="row2" style="margin-top:14px"><button class="save" style="height:44px" onclick="applyRange()">确定</button>' +
+    '<button class="save" style="height:44px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="clearRange()">清除区间</button></div>');
+}
+function applyRange() {
+  const from = $('rgFrom').value, to = $('rgTo').value;
+  if (!from || !to) { toast('请选择起止日期'); return; }
+  RANGE[rangeTarget] = {from, to};
+  closeSheet();
+  if (rangeTarget === 'home') renderHome();
+  if (rangeTarget === 'bills') renderBills();
+  if (rangeTarget === 'recon') renderRecon();
+}
+function clearRange() {
+  RANGE[rangeTarget] = null;
+  closeSheet();
+  if (rangeTarget === 'home') renderHome();
+  if (rangeTarget === 'bills') renderBills();
+  if (rangeTarget === 'recon') renderRecon();
+}
+
+/* ---------- 管理发货人/货物/物流 ---------- */
+let manageType = '';
+function openManage(type) {
+  manageType = type;
+  const title = type === 'shipper' ? '管理发货人' : type === 'goods' ? '管理货物名称' : '管理物流公司';
+  openSheet(title, manageBody());
+}
+function manageBody() {
+  let rows = '';
+  if (manageType === 'shipper') {
+    rows = S.shipperList.map((n, i) => '<div class="listitem"><span>👤 ' + esc(n) + '</span><button class="rm" onclick="rmManage(' + i + ')">删除</button></div>').join('');
+  } else if (manageType === 'goods') {
+    rows = S.goodsList.map((n, i) => '<div class="listitem"><span>' + esc(n) + ' <span style="color:#9aa4b2;font-size:12.5px">成本 ' + money(S.goodsCost[n] || 0) + '</span></span><button class="rm" onclick="rmManage(' + i + ')">删除</button></div>').join('');
+  } else {
+    rows = S.logisticsCompanies.map((n, i) => '<div class="listitem"><span>🚚 ' + esc(n) + '</span><button class="rm" onclick="rmManage(' + i + ')">删除</button></div>').join('');
+  }
+  const extra = manageType === 'goods'
+    ? '<div style="margin-top:10px"><div class="lb" style="font-size:13px;color:#8b94a3;margin-bottom:6px">成本（元）</div><input class="inp" id="mgCost" type="number" inputmode="decimal" placeholder="该货物默认成本"></div>'
+    : '';
+  return (rows || '<div class="empty">暂无</div>') +
+    '<div style="margin-top:12px"><input class="inp" id="mgName" placeholder="输入名称后点添加">' + extra +
+    '<button class="save" style="height:44px;margin-top:10px;font-size:15px" onclick="addManage()">添加</button></div>';
+}
+function addManage() {
+  const name = $('mgName').value.trim();
+  if (!name) { toast('请输入名称'); return; }
+  if (manageType === 'shipper') { if (S.shipperList.indexOf(name) < 0) S.shipperList.push(name); }
+  if (manageType === 'logistics') { if (S.logisticsCompanies.indexOf(name) < 0) S.logisticsCompanies.push(name); }
+  if (manageType === 'goods') { if (S.goodsList.indexOf(name) < 0) S.goodsList.push(name); S.goodsCost[name] = numv(($('mgCost') || {}).value); }
+  saveAll(); fillSelects(); openManage(manageType); toast('已添加：' + name);
+}
+function rmManage(i) {
+  if (!confirm('确定删除？历史记录不受影响。')) return;
+  if (manageType === 'shipper') S.shipperList.splice(i, 1);
+  if (manageType === 'logistics') S.logisticsCompanies.splice(i, 1);
+  if (manageType === 'goods') { const n = S.goodsList.splice(i, 1)[0]; delete S.goodsCost[n]; }
+  saveAll(); fillSelects(); openManage(manageType);
+}
+
+/* ---------- 编辑 ---------- */
+function openEdit(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  const opts = S.shipperList.map(n => '<option value="' + esc(n) + '"' + (n === r.shipper ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+  const lgs = S.logisticsCompanies.map(n => '<option value="' + esc(n) + '"' + (n === r.logisticsCompany ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+  const itemRows = (r.items || []).map((i, idx) =>
+    '<div class="goodsline" data-idx="' + idx + '"><input class="inp e-name" value="' + esc(i.name) + '"><span class="x">×</span>' +
+    '<input class="num e-qty" type="number" value="' + (i.quantity || 1) + '">' +
+    '<input class="num e-cost" type="number" value="' + (i.cost || 0) + '">' +
+    '<button class="del" onclick="this.parentNode.remove()">×</button></div>').join('');
+  openSheet('编辑记录',
+    '<div class="field"><div class="lb">发货人</div><select class="inp" id="eShipper">' + opts + '</select></div>' +
+    '<div class="field"><div class="lb">货物清单</div><div id="eItems">' + itemRows +
+    '</div><button class="mgr" onclick="addEditLine()">＋ 添加货物</button></div>' +
+    '<div class="field"><div class="lb">货物总价（元）</div><input class="inp" id="eTotal" type="number" value="' + (r.totalPrice || 0) + '"></div>' +
+    '<div class="row2"><div class="field"><div class="lb">付款方式</div><select class="inp" id="ePay">' +
+    '<option value="full"' + (r.paymentType === 'full' ? ' selected' : '') + '>全款</option>' +
+    '<option value="partial"' + (r.paymentType === 'partial' ? ' selected' : '') + '>定金+尾款</option></select></div>' +
+    '<div class="field"><div class="lb">定金（元）</div><input class="inp" id="eDeposit" type="number" value="' + (r.deposit || 0) + '"></div></div>' +
+    '<div class="row2"><div class="field"><div class="lb">运费方式</div><select class="inp" id="eFType">' +
+    '<option value="include"' + (r.freightType === 'include' ? ' selected' : '') + '>包邮（寄付）</option>' +
+    '<option value="collect"' + (r.freightType === 'collect' ? ' selected' : '') + '>运费到付</option></select></div>' +
+    '<div class="field"><div class="lb">运费（元）</div><input class="inp" id="eFreight" type="number" value="' + (r.freight || 0) + '"></div></div>' +
+    '<div class="row2"><div class="field"><div class="lb">发货日期</div><input class="inp" id="eDate" type="date" value="' + (r.shipDate || '') + '"></div>' +
+    '<div class="field"><div class="lb">发货状态</div><select class="inp" id="eStatus">' +
+    '<option value="shipped"' + (r.shipStatus !== 'pending' ? ' selected' : '') + '>已发货</option>' +
+    '<option value="pending"' + (r.shipStatus === 'pending' ? ' selected' : '') + '>待发货</option></select></div></div>' +
+    '<div class="field"><div class="lb">发货物流</div><select class="inp" id="eLogistics">' + lgs + '</select></div>' +
+    '<div class="field"><div class="lb">物流单号</div><input class="inp" id="eTracking" value="' + esc(r.trackingNumber || '') + '"></div>' +
+    '<div class="field"><div class="lb">备注</div><textarea class="inp" id="eRemark">' + esc(r.remark || '') + '</textarea></div>' +
+    '<div class="row2"><button class="save" style="height:48px" onclick="saveEdit(\'' + id + '\')">保存修改</button>' +
+    '<button class="save" style="height:48px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="closeSheet()">取消</button></div>');
+}
+function addEditLine() {
+  const box = $('eItems');
+  const div = document.createElement('div');
+  div.className = 'goodsline';
+  div.innerHTML = '<input class="inp e-name"><span class="x">×</span><input class="num e-qty" type="number" value="1"><input class="num e-cost" type="number" placeholder="成本"><button class="del" onclick="this.parentNode.remove()">×</button>';
+  box.appendChild(div);
+}
+function saveEdit(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  const rows = [];
+  $('shBody').querySelectorAll('.goodsline').forEach(line => {
+    const name = line.querySelector('.e-name').value.trim();
+    if (!name) return;
+    rows.push({name, cost: numv(line.querySelector('.e-cost').value), quantity: Math.max(1, Math.round(numv(line.querySelector('.e-qty').value) || 1)), settled: false});
+  });
+  if (!rows.length) { toast('请填写货物名称'); return; }
+  const total = numv($('eTotal').value);
+  const pay = $('ePay').value;
+  let deposit = numv($('eDeposit').value);
+  if (pay === 'full') deposit = total;
+  const balance = pay === 'full' ? 0 : Math.max(0, total - deposit);
+  // 保留原有已结状态
+  const old = (r.items || []).map(i => i.settled);
+  rows.forEach((row, i) => { if (old[i]) row.settled = old[i]; });
+  Object.assign(r, {
+    shipper: $('eShipper').value, goodsName: rows.map(x => x.name).join(' + '),
+    items: rows, costPrice: rows.reduce((s, x) => s + x.cost * x.quantity, 0),
+    totalPrice: total, paymentType: pay, deposit, balance,
+    freightType: $('eFType').value, freight: numv($('eFreight').value),
+    shipDate: $('eDate').value, shipStatus: $('eStatus').value,
+    logisticsCompany: $('eLogistics').value, trackingNumber: $('eTracking').value.trim(),
+    remark: $('eRemark').value.trim()
+  });
+  saveAll(); closeSheet(); renderAll(); toast('已保存修改');
+}
+
+/* ---------- 退货 ---------- */
+function openReturn(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  openSheet('退货 - ' + r.goodsName,
+    '<div class="field"><div class="lb">退货运费（元）</div><input class="inp" id="rtFreight" type="number" inputmode="decimal" value="' + (r.returnFreight || 0) + '"></div>' +
+    '<div class="field"><div class="lb">运费承担方</div><select class="inp" id="rtPayer"><option value="our"' + (r.returnFreightPayer !== 'customer' ? ' selected' : '') + '>我们承担</option><option value="customer"' + (r.returnFreightPayer === 'customer' ? ' selected' : '') + '>客户承担</option></select></div>' +
+    '<div class="field"><div class="lb">退货物流（选填）</div><input class="inp" id="rtLogistics" value="' + esc(r.returnLogistics || '') + '" placeholder="如：京东物流上门取件"></div>' +
+    '<div class="row2"><button class="save" style="height:48px;background:#e0453a" onclick="saveReturn(\'' + id + '\')">确认退货</button>' +
+    '<button class="save" style="height:48px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="closeSheet()">取消</button></div>');
+}
+function saveReturn(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  r.isReturn = true;
+  r.returnFreight = numv($('rtFreight').value);
+  r.returnFreightPayer = $('rtPayer').value;
+  r.returnLogistics = $('rtLogistics').value.trim();
+  saveAll(); closeSheet(); renderAll(); toast('已标记退货');
+}
+
+/* ---------- 回收站 ---------- */
+function openRecycle() {
+  const rows = S.recycleBin.map((r, i) =>
+    '<div class="listitem"><span><b>' + esc(r.goodsName) + '</b><br><span style="color:#9aa4b2;font-size:12.5px">' + (r.shipDate || '') + ' · ' + esc(r.shipper || '') + ' · ' + money(r.totalPrice) + '</span></span>' +
+    '<span><button class="rm" style="color:#2f7cd0" onclick="restoreRecycle(' + i + ')">恢复</button>' +
+    '<button class="rm" onclick="purgeRecycle(' + i + ')">彻底删除</button></span></div>').join('');
+  openSheet('回收站（' + S.recycleBin.length + '）', rows || '<div class="empty">回收站是空的</div>');
+}
+function restoreRecycle(i) {
+  const r = S.recycleBin.splice(i, 1)[0];
+  delete r.deletedAt;
+  S.records.unshift(r);
+  saveAll(); closeSheet(); renderAll(); toast('已恢复');
+}
+function purgeRecycle(i) {
+  if (!confirm('彻底删除后无法恢复，确定？')) return;
+  S.recycleBin.splice(i, 1);
+  saveAll(); openRecycle(); renderAll();
+}
+
+/* ---------- 备份 / 导入导出 ---------- */
+function backupPayload() {
+  return {
+    records: S.records, recycleBin: S.recycleBin, goodsList: S.goodsList, goodsCost: S.goodsCost,
+    logisticsCompanies: S.logisticsCompanies, shipperList: S.shipperList, reconciledMonths: S.reconciledMonths,
+    exportTime: new Date().toISOString(), version: '1.3'
+  };
+}
+function exportData() {
+  const txt = JSON.stringify(backupPayload());
+  const blob = new Blob([txt], {type: 'application/json'});
+  const a = document.createElement('a');
+  const d = new Date();
+  a.download = '发货记账本备份_' + d.getFullYear() + '_' + (d.getMonth() + 1) + '_' + d.getDate() + '.json';
+  a.href = URL.createObjectURL(blob);
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  markBackup(true);
+  toast('已导出备份文件');
+}
+function markBackup(silent) {
+  META.lastBackup = todayStr();
+  saveAll(true);
+  renderAll();
+  if (!silent) toast('已标记今日已备份');
+}
+function importFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => { applyImport(String(fr.result), f.name); input.value = ''; };
+  fr.readAsText(f, 'utf-8');
+}
+function applyImport(text, name) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { toast('文件格式错误，需要 JSON 备份文件'); return; }
+  const recs = Array.isArray(data) ? data : data.records;
+  if (!Array.isArray(recs)) { toast('未找到记录数据'); return; }
+  if (!confirm('导入 ' + recs.length + ' 条记录，将覆盖当前数据（当前 ' + S.records.length + ' 条），确定？')) return;
+  S.records = recs;
+  S.recycleBin = data.recycleBin || [];
+  S.goodsList = data.goodsList || S.goodsList;
+  S.goodsCost = data.goodsCost || S.goodsCost;
+  S.logisticsCompanies = data.logisticsCompanies || S.logisticsCompanies;
+  S.shipperList = data.shipperList || S.shipperList;
+  S.reconciledMonths = data.reconciledMonths || {};
+  saveAll(); fillSelects(); renderAll(); closeSheet();
+  toast('已导入 ' + recs.length + ' 条记录');
+}
+function openPaste() {
+  openSheet('粘贴导入',
+    '<div style="font-size:13px;color:#8b94a3;line-height:1.6;margin-bottom:10px">支持两种内容：① 备份 JSON 全文；② 每行一条，逗号或制表符分隔：<br>日期, 发货人, 货物, 总价, 包邮/到付, 全款/定金, 定金, 物流, 运费, 单号</div>' +
+    '<textarea class="inp" id="pasteBox" style="height:180px" placeholder="粘贴到这里..."></textarea>' +
+    '<button class="save" style="height:46px;margin-top:12px" onclick="doPaste()">开始导入</button>');
+}
+function doPaste() {
+  const txt = $('pasteBox').value.trim();
+  if (!txt) { toast('内容为空'); return; }
+  if (txt.charAt(0) === '{' || txt.charAt(0) === '[') { applyImport(txt, 'paste'); return; }
+  const lines = txt.split(/\r?\n/).filter(x => x.trim());
+  const recs = [];
+  let bad = 0;
+  lines.forEach(line => {
+    const p = line.split(/\t|,|，/).map(s => s.trim());
+    if (p.length < 4) { bad++; return; }
+    const total = numv(p[3]);
+    if (!total) { bad++; return; }
+    const pay = (p[5] || '').indexOf('全款') >= 0 ? 'full' : 'partial';
+    const deposit = numv(p[6]);
+    const balance = pay === 'full' ? 0 : Math.max(0, total - deposit);
+    const ftype = (p[4] || '').indexOf('到付') >= 0 ? 'collect' : 'include';
+    recs.push({
+      id: 'r' + Date.now() + recs.length + Math.floor(Math.random() * 100),
+      shipper: p[1] || '', goodsName: p[2] || '', costPrice: 0,
+      items: [{name: p[2] || '', cost: 0, quantity: 1, settled: false}],
+      totalPrice: total, freightType: ftype, freight: numv(p[8]),
+      paymentType: pay, deposit, balance, balancePaid: pay === 'full', collectCancelled: false,
+      shipDate: p[0] || todayStr(), orderDate: p[0] || todayStr(),
+      logisticsCompany: p[7] || '京东物流', trackingNumber: p[9] || '', remark: '',
+      logisticsReconciled: false, paymentSettled: false, profitSettled: false,
+      shipStatus: 'shipped', isReturn: false, createdAt: new Date().toISOString()
+    });
+  });
+  if (!recs.length) { toast('没有解析到有效记录'); return; }
+  if (!confirm('解析到 ' + recs.length + ' 条' + (bad ? '（另有 ' + bad + ' 行无法识别）' : '') + '，将追加到现有数据，确定？')) return;
+  S.records = recs.concat(S.records);
+  saveAll(); closeSheet(); renderAll();
+  toast('已导入 ' + recs.length + ' 条');
+}
+
+/* ===================== 启动 ===================== */
+function bindDraft() {
+  ['aShipper', 'aTotal', 'aDeposit', 'aFreight', 'aDate', 'aLogistics', 'aTracking', 'aRemark'].forEach(id => {
+    const el = $(id); if (el) el.addEventListener('input', saveDraft);
+    if (el) el.addEventListener('change', saveDraft);
+  });
+}
+(async function init() {
+  const loaded = await loadAll();
+  if (!loaded) {
+    seedFromTag();
+    await saveAll(true);
+  }
+  // datalist
+  const dl = document.createElement('datalist');
+  dl.id = 'goodsDL';
+  document.body.appendChild(dl);
+  const refreshDL = () => { dl.innerHTML = goodsOptions(); };
+  window.refreshGoodsDL = refreshDL;
+  refreshDL();
+
+  fillSelects();
+  $('aDate').value = todayStr();
+  addGoodsLine('', '', 1);
+  toggleSecInit();
+  bindDraft();
+  restoreDraft();
+  renderAll();
+  saveAll(true);
+  if (!S.records.length) setTimeout(() => toast('还没有数据：请在首页「数据管理」里文件导入备份'), 500);
+  // 每次渲染后刷新货物候选
+  const _renderAll = renderAll;
+  window.renderAll = function () { refreshDL(); _renderAll(); };
+})();
+
+</script>
+</body>
+</html>
