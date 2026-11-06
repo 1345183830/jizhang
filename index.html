@@ -273,7 +273,6 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
 .retline{color:#c2410c}
 
 
-.qkhint{font-size:12px;color:#8b94a3;line-height:1.55;margin-bottom:8px}
 .qkrow{display:flex;align-items:center;gap:8px}
 .qkrow span{font-size:12.5px;color:#6b7280;white-space:nowrap}
 .qkYear{width:88px;height:36px;text-align:center;padding:0 6px}
@@ -283,6 +282,7 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
 .qkline{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;padding:7px 0;border-bottom:1px dashed #eef1f5;font-size:13px;color:#374151}
 .qkline .qkd{color:#2f7cd0;font-weight:600}
 .qkline .qkm{margin-left:auto;color:#d63333;font-weight:600}
+.qkline .qkedit{font-size:12px;color:#2f7cd0;margin-left:8px;white-space:nowrap}
 .qkline small{width:100%;color:#93a0b1;font-size:11.5px}
 .qkbad{background:#fff5f5;border-radius:8px;padding:8px;margin:6px 0;font-size:12.5px;color:#c24141}
 .qkbad b{display:block;font-size:12px;color:#9aa4b2;font-weight:500;margin-bottom:2px;word-break:break-all}
@@ -464,7 +464,6 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
         <div class="l">⚡ 快速录入（整段粘贴）</div><span class="caret" id="c-quick">▼</span>
       </div>
       <div id="b-quick" style="display:none;padding-top:6px">
-        <div class="qkhint">把备忘录里的一整段原文粘进来，一行一条。识别 2.1 这种日期、✓/◦ 标记、w/gsF/S 发货人，国新＝京东物流。</div>
         <div class="qkrow"><span>年份</span><input class="inp qkYear" id="qkYear" type="number" inputmode="numeric"><button class="ghostbtn" onclick="quickParse()">解析预览</button></div>
         <textarea class="inp" id="qkBox" style="height:150px;margin-top:8px" placeholder="例：2.24 w压榨机750包邮6张布，定400，代350，国新100"></textarea>
         <div id="qkPrev" class="qkprev"></div>
@@ -1525,7 +1524,7 @@ function rmManage(i) {
 /* ---------- 编辑 ---------- */
 function openEdit(id) {
   const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
-  const opts = S.shipperList.map(n => '<option value="' + esc(n) + '"' + (n === r.shipper ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+  const opts = shipperOpts(r.shipper);
   const lgs = S.logisticsCompanies.map(n => '<option value="' + esc(n) + '"' + (n === r.logisticsCompany ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
   const itemRows = (r.items || []).map((i, idx) =>
     '<div class="goodsline" data-idx="' + idx + '"><input class="inp e-name" value="' + esc(i.name) + '"><span class="x">×</span>' +
@@ -1552,6 +1551,7 @@ function openEdit(id) {
     '<div class="field"><div class="lb">发货物流</div><select class="inp" id="eLogistics">' + lgs + '</select></div>' +
     '<div class="field"><div class="lb">物流单号</div><input class="inp" id="eTracking" value="' + esc(r.trackingNumber || '') + '"></div>' +
     '<div class="field"><div class="lb">备注</div><textarea class="inp" id="eRemark">' + esc(r.remark || '') + '</textarea></div>' +
+    '<div class="field"><label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:#4b5563"><input type="checkbox" id="eCancel"' + (r.collectCancelled ? ' checked' : '') + '> 代收已取消（不计入待收尾款）</label></div>' +
     '<div class="row2"><button class="save" style="height:48px" onclick="saveEdit(\'' + id + '\')">保存修改</button>' +
     '<button class="save" style="height:48px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="closeSheet()">取消</button></div>');
 }
@@ -1586,7 +1586,8 @@ function saveEdit(id) {
     freightType: $('eFType').value, freight: numv($('eFreight').value),
     shipDate: $('eDate').value, shipStatus: $('eStatus').value,
     logisticsCompany: $('eLogistics').value, trackingNumber: $('eTracking').value.trim(),
-    remark: $('eRemark').value.trim()
+    remark: $('eRemark').value.trim(),
+    collectCancelled: !!($('eCancel') || {}).checked
   });
   saveAll(); closeSheet(); renderAll(); toast('已保存修改');
 }
@@ -1829,6 +1830,14 @@ function qkYearVal() {
   return new Date().getFullYear();
 }
 
+function qkNormShipper(v) {
+  var s = String(v || '').trim();
+  var hit = (S.shipperList || []).filter(function (n) { return String(n).toLowerCase() === s.toLowerCase(); })[0];
+  if (hit) return hit;
+  if (s.toLowerCase() === 'w') return 'W';
+  if (s.toLowerCase() === 's') return 'S';
+  return s;
+}
 function qkParseLine(raw, year) {
   var rawLine = String(raw || '').trim();
   if (/^\d{4}-\d{1,2}-\d{1,2},/.test(rawLine) && rawLine.split(',').length >= 9) {
@@ -1839,7 +1848,7 @@ function qkParseLine(raw, year) {
     var cost0 = (S.goodsCost && S.goodsCost[f[2]]) ? numv(S.goodsCost[f[2]]) : 0;
     return {rec: {
       id: 'q' + Date.now() + Math.floor(Math.random() * 1000) + QK.rows.length,
-      shipper: f[1] || 'S', goodsName: f[2] || '', costPrice: cost0,
+      shipper: qkNormShipper(f[1] || 'S'), goodsName: f[2] || '', costPrice: cost0,
       items: [{name: f[2] || '', cost: cost0, quantity: 1, settled: false}],
       totalPrice: t, freightType: (f[4] || '').indexOf('到付') >= 0 ? 'collect' : 'include',
       freight: numv(f[8]),
@@ -1904,7 +1913,7 @@ function qkParseLine(raw, year) {
   return {
     rec: {
       id: 'q' + Date.now() + Math.floor(Math.random() * 1000) + QK.rows.length,
-      shipper: shipper, goodsName: goods, costPrice: cost,
+      shipper: qkNormShipper(shipper), goodsName: goods, costPrice: cost,
       items: [{name: goods, cost: cost, quantity: 1, settled: false}],
       totalPrice: total, freightType: ftype, freight: freight,
       paymentType: full ? 'full' : 'partial', deposit: dep, balance: bal,
@@ -1933,6 +1942,10 @@ function quickParse() {
     rows.push(r.rec);
   });
   QK = {rows: rows, bad: bad};
+  qkRenderPreview();
+}
+function qkRenderPreview() {
+  var rows = QK.rows, bad = QK.bad;
   var prev = $('qkPrev');
   var html = '';
   if (rows.length || bad.length) {
@@ -1940,13 +1953,13 @@ function quickParse() {
     var fsum = rows.reduce(function (a, r) { return a + r.freight; }, 0);
     html += '<div class="qksum">可录入 ' + rows.length + ' 条' + (bad.length ? ' · 需处理 ' + bad.length + ' 条' : '') +
       ' · 总价 ¥' + sum.toLocaleString('zh-CN') + ' · 运费 ¥' + fsum.toLocaleString('zh-CN') + '</div>';
-    html += rows.map(function (r) {
+    html += rows.map(function (r, i) {
       var tags = [];
       if (r._qkReturn) tags.push('退货(需手动标记)');
       if (r.collectCancelled) tags.push('代收已取消');
       if (r.freightType === 'collect') tags.push('到付');
       return '<div class="qkline"><span class="qkd">' + r.shipDate.slice(5) + '</span><span>' + esc(r.shipper) + '</span><span>' + esc(r.goodsName) + '</span>' +
-        '<span class="qkm">¥' + r.totalPrice.toLocaleString('zh-CN') + '</span>' +
+        '<span class="qkm">¥' + r.totalPrice.toLocaleString('zh-CN') + '</span><span class="qkedit" onclick="qkEditRow(' + i + ')">编辑</span>' +
         '<small>定金 ¥' + r.deposit + ' · 代收 ¥' + r.balance + ' · ' + esc(r.logisticsCompany) + ' 运费 ¥' + r.freight + (tags.length ? ' · ' + tags.join(' / ') : '') + (r.remark ? ' · ' + esc(r.remark) : '') + '</small></div>';
     }).join('');
     html += bad.map(function (b) { return '<div class="qkbad"><b>' + esc(b.text) + '</b>' + esc(b.why) + '</div>'; }).join('');
@@ -1957,12 +1970,77 @@ function quickParse() {
   btn.textContent = '确认录入 ' + rows.length + ' 条';
 }
 
+
+function shipperOpts(cur) {
+  var list = (S.shipperList || []).slice();
+  if (cur && list.indexOf(cur) < 0) list.push(cur);
+  return list.map(function (n) { return '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+}
+function qkEditRow(i) {
+  var r = QK.rows[i]; if (!r) return;
+  var opts = shipperOpts(r.shipper);
+  var lgs = S.logisticsCompanies.map(function (n) { return '<option value="' + esc(n) + '"' + (n === r.logisticsCompany ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+  openSheet('编辑这一条',
+    '<div class="field"><div class="lb">发货人</div><select class="inp" id="qeShipper">' + opts + '</select></div>' +
+    '<div class="field"><div class="lb">货物名称</div><input class="inp" id="qeGoods" value="' + esc(r.goodsName) + '"></div>' +
+    '<div class="row2"><div class="field"><div class="lb">货物总价（元）</div><input class="inp" id="qeTotal" type="number" value="' + r.totalPrice + '"></div>' +
+    '<div class="field"><div class="lb">定金（元）</div><input class="inp" id="qeDeposit" type="number" value="' + r.deposit + '"></div></div>' +
+    '<div class="row2"><div class="field"><div class="lb">付款方式</div><select class="inp" id="qePay">' +
+    '<option value="full"' + (r.paymentType === 'full' ? ' selected' : '') + '>全款</option>' +
+    '<option value="partial"' + (r.paymentType === 'partial' ? ' selected' : '') + '>定金+尾款</option></select></div>' +
+    '<div class="field"><div class="lb">运费方式</div><select class="inp" id="qeFType">' +
+    '<option value="include"' + (r.freightType === 'include' ? ' selected' : '') + '>包邮（寄付）</option>' +
+    '<option value="collect"' + (r.freightType === 'collect' ? ' selected' : '') + '>运费到付</option></select></div></div>' +
+    '<div class="row2"><div class="field"><div class="lb">运费（元）</div><input class="inp" id="qeFreight" type="number" value="' + r.freight + '"></div>' +
+    '<div class="field"><div class="lb">发货日期</div><input class="inp" id="qeDate" type="text" readonly onclick="openDatePicker(\'qeDate\')" value="' + r.shipDate + '"></div></div>' +
+    '<div class="field"><div class="lb">发货物流</div><select class="inp" id="qeLogistics">' + lgs + '</select></div>' +
+    '<div class="field"><div class="lb">备注</div><textarea class="inp" id="qeRemark">' + esc(r.remark || '') + '</textarea></div>' +
+    '<div class="field"><label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:#4b5563"><input type="checkbox" id="qeCancel"' + (r.collectCancelled ? ' checked' : '') + '> 代收已取消（不计入待收尾款）</label></div>' +
+    '<div class="row2"><button class="save" style="height:48px" onclick="qkSaveRow(' + i + ')">保存修改</button>' +
+    '<button class="save" style="height:48px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="closeSheet()">取消</button></div>' +
+    '<div style="text-align:center;margin-top:10px"><span style="font-size:13px;color:#c24141" onclick="qkDelRow(' + i + ')">删除这一条</span></div>');
+}
+
+function qkSaveRow(i) {
+  var r = QK.rows[i]; if (!r) return;
+  var goods = $('qeGoods').value.trim();
+  if (!goods) { toast('货物名称不能为空'); return; }
+  var total = numv($('qeTotal').value);
+  if (total <= 0) { toast('请输入总价'); return; }
+  var pay = $('qePay').value;
+  var dep = pay === 'full' ? total : Math.min(total, numv($('qeDeposit').value));
+  var cost = (S.goodsCost && S.goodsCost[goods]) ? numv(S.goodsCost[goods]) : (r.items[0].cost || 0);
+  r.shipper = $('qeShipper').value;
+  r.goodsName = goods;
+  r.items = [{name: goods, cost: cost, quantity: 1, settled: false}];
+  r.costPrice = cost;
+  r.totalPrice = total;
+  r.paymentType = pay;
+  r.deposit = dep;
+  r.balance = pay === 'full' ? 0 : Math.max(0, total - dep);
+  r.balancePaid = pay === 'full';
+  r.freightType = $('qeFType').value;
+  r.freight = numv($('qeFreight').value);
+  r.logisticsCompany = $('qeLogistics').value;
+  r.shipDate = $('qeDate').value || r.shipDate;
+  r.orderDate = r.shipDate;
+  r.remark = $('qeRemark').value.trim();
+  r.collectCancelled = $('qeCancel').checked;
+  closeSheet(); qkRenderPreview(); toast('已修改，记得最后点确认录入');
+}
+
+function qkDelRow(i) {
+  QK.rows.splice(i, 1);
+  closeSheet(); qkRenderPreview();
+}
+
 function quickCommit() {
   if (!QK.rows.length) return;
   var recs = QK.rows.map(function (r) { delete r._qkReturn; return r; });
   S.records = recs.concat(S.records);
   recs.forEach(function (r) {
     if (r.goodsName && S.goodsList.indexOf(r.goodsName) < 0) S.goodsList.push(r.goodsName);
+    if (r.shipper && S.shipperList.indexOf(r.shipper) < 0) S.shipperList.push(r.shipper);
   });
   saveAll(); fillSelects(); renderAll();
   toast('已录入 ' + recs.length + ' 条');
@@ -1996,6 +2074,7 @@ function bindDraft() {
   $('aDate').value = todayStr();
   addGoodsLine('', '', 1);
   toggleSecInit();
+  if ($('qkYear') && !$('qkYear').value) $('qkYear').value = new Date().getFullYear();
   bindDraft();
   restoreDraft();
   renderAll();
