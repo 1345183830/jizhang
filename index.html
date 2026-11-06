@@ -1238,7 +1238,7 @@ function reconItem(r, idx) {
   if (r.shipStatus === 'pending') tags += '<span class="tag tg-gray">待发货</span>';
   const settTag = settledLines > 0 ? '<span class="dpill ok">✓ 货款已结 ' + settledLines + '/' + itemLines + ' 台</span>' : '';
   const fTag = r.freightType === 'include'
-    ? '<div class="fr">包邮 <b>' + money(r.freight) + '</b> <span class="cd">▼</span></div>'
+    ? '<div class="fr">包邮 <b>' + money(r.freight) + '</b> <span class="cd">' + (exp ? '▲' : '▼') + '</span></div>'
     : '<div class="fr due">运费到付' + (numv(r.freight) ? ' ' + money(r.freight) : '') + '</div>';
   const bTag = (balanceOf(r) > 0 && !r.collectCancelled) ? '<div class="fr or">代收 <b>' + money(balanceOf(r)) + '</b></div>' : '';
   let payTags = '';
