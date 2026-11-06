@@ -1987,7 +1987,7 @@ function qkEditRow(i) {
   openSheet('编辑这一条',
     '<div class="field"><div class="lb">发货人</div><select class="inp" id="qeShipper">' + opts + '</select></div>' +
     '<div class="field"><div class="lb">货物名称</div><input class="inp" id="qeGoods" value="' + esc(r.goodsName) + '"></div>' +
-    '<div class="field"><div class="lb">货物成本（元）</div><input class="inp" id="qeCost" type="number" value="' + (r.items && r.items[0] ? (r.items[0].cost || 0) : 0) + '"></div>' +
+    '<div class="field"><div class="lb">货物成本（元）</div><input class="inp" id="qeCost" type="number" placeholder="0" value="' + (r.items && r.items[0] && r.items[0].cost ? r.items[0].cost : '') + '"></div>' +
     '<div class="row2"><div class="field"><div class="lb">货物总价（元）</div><input class="inp" id="qeTotal" type="number" value="' + r.totalPrice + '"></div>' +
     '<div class="field"><div class="lb">定金（元）</div><input class="inp" id="qeDeposit" type="number" value="' + r.deposit + '"></div></div>' +
     '<div class="row2"><div class="field"><div class="lb">付款方式</div><select class="inp" id="qePay">' +
@@ -2056,6 +2056,15 @@ function quickCommit() {
 
 /* ===================== 启动 ===================== */
 function bindDraft() {
+  // 防止滚轮误改数字框
+  document.addEventListener('wheel', function (e) {
+    const hit = document.elementFromPoint(e.clientX, e.clientY);
+    const inp = hit && hit.closest ? hit.closest('input[type=number]') : null;
+    if (inp && inp === document.activeElement) {
+      e.preventDefault();
+      inp.blur();
+    }
+  }, {passive: false, capture: true});
   ['aShipper', 'aTotal', 'aDeposit', 'aFreight', 'aDate', 'aLogistics', 'aTracking', 'aRemark'].forEach(id => {
     const el = $(id); if (el) el.addEventListener('input', saveDraft);
     if (el) el.addEventListener('change', saveDraft);
