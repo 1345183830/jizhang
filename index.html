@@ -1529,7 +1529,7 @@ function openEdit(id) {
   const itemRows = (r.items || []).map((i, idx) =>
     '<div class="goodsline" data-idx="' + idx + '"><input class="inp e-name" value="' + esc(i.name) + '"><span class="x">×</span>' +
     '<input class="num e-qty" type="number" value="' + (i.quantity || 1) + '">' +
-    '<input class="num e-cost" type="number" value="' + (i.cost || 0) + '">' +
+    '<input class="num e-cost" type="number" placeholder="成本" value="' + (i.cost || 0) + '">' +
     '<button class="del" onclick="this.parentNode.remove()">×</button></div>').join('');
   openSheet('编辑记录',
     '<div class="field"><div class="lb">发货人</div><select class="inp" id="eShipper">' + opts + '</select></div>' +
@@ -1960,7 +1960,11 @@ function qkRenderPreview() {
       if (r.freightType === 'collect') tags.push('到付');
       return '<div class="qkline"><span class="qkd">' + r.shipDate.slice(5) + '</span><span>' + esc(r.shipper) + '</span><span>' + esc(r.goodsName) + '</span>' +
         '<span class="qkm">¥' + r.totalPrice.toLocaleString('zh-CN') + '</span><span class="qkedit" onclick="qkEditRow(' + i + ')">编辑</span>' +
-        '<small>定金 ¥' + r.deposit + ' · 代收 ¥' + r.balance + ' · ' + esc(r.logisticsCompany) + ' 运费 ¥' + r.freight + (tags.length ? ' · ' + tags.join(' / ') : '') + (r.remark ? ' · ' + esc(r.remark) : '') + '</small></div>';
+        (function () {
+          var c0 = (r.items && r.items[0] ? (r.items[0].cost || 0) : 0);
+          var profit = r.totalPrice - c0 - (r.freightType === 'include' ? r.freight : 0);
+          return '<small>成本 ¥' + c0 + (r._qkReturn ? '' : ' · 利润 ¥' + profit) + ' · 定金 ¥' + r.deposit + ' · 代收 ¥' + r.balance + ' · ' + esc(r.logisticsCompany) + ' 运费 ¥' + r.freight + (tags.length ? ' · ' + tags.join(' / ') : '') + (r.remark ? ' · ' + esc(r.remark) : '') + '</small></div>';
+        })();
     }).join('');
     html += bad.map(function (b) { return '<div class="qkbad"><b>' + esc(b.text) + '</b>' + esc(b.why) + '</div>'; }).join('');
   }
@@ -1983,6 +1987,7 @@ function qkEditRow(i) {
   openSheet('编辑这一条',
     '<div class="field"><div class="lb">发货人</div><select class="inp" id="qeShipper">' + opts + '</select></div>' +
     '<div class="field"><div class="lb">货物名称</div><input class="inp" id="qeGoods" value="' + esc(r.goodsName) + '"></div>' +
+    '<div class="field"><div class="lb">货物成本（元）</div><input class="inp" id="qeCost" type="number" value="' + (r.items && r.items[0] ? (r.items[0].cost || 0) : 0) + '"></div>' +
     '<div class="row2"><div class="field"><div class="lb">货物总价（元）</div><input class="inp" id="qeTotal" type="number" value="' + r.totalPrice + '"></div>' +
     '<div class="field"><div class="lb">定金（元）</div><input class="inp" id="qeDeposit" type="number" value="' + r.deposit + '"></div></div>' +
     '<div class="row2"><div class="field"><div class="lb">付款方式</div><select class="inp" id="qePay">' +
@@ -2009,7 +2014,7 @@ function qkSaveRow(i) {
   if (total <= 0) { toast('请输入总价'); return; }
   var pay = $('qePay').value;
   var dep = pay === 'full' ? total : Math.min(total, numv($('qeDeposit').value));
-  var cost = (S.goodsCost && S.goodsCost[goods]) ? numv(S.goodsCost[goods]) : (r.items[0].cost || 0);
+  var cost = numv($('qeCost').value);
   r.shipper = $('qeShipper').value;
   r.goodsName = goods;
   r.items = [{name: goods, cost: cost, quantity: 1, settled: false}];
