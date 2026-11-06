@@ -420,7 +420,7 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
     </div>
     <div class="card" style="margin:12px 0 0">
       <div class="cardhead" onclick="toggleSec('addrecent')">
-        <div class="l">📋 最近录入（5条）</div><span class="caret" id="c-addrecent">▲</span>
+        <div class="l">📋 最近录入（5条）</div><span class="caret" id="c-addrecent">▼</span>
       </div>
       <div id="b-addrecent" class="recent" style="padding-top:4px"></div>
     </div>
@@ -664,7 +664,7 @@ function toggleSec(key) {
   const box = $('b-' + key);
   if (box) box.style.display = SEC[key] ? 'block' : 'none';
   const c = $('c-' + key);
-  if (c) c.classList.remove('up');
+  if (c) c.classList.toggle('up', !!SEC[key]);
 }
 
 /* ===================== 首页 ===================== */
@@ -1007,7 +1007,7 @@ function renderAddRecent() {
 function toggleSecInit() {
   Object.keys(SEC).forEach(k => {
     const box = $('b-' + k); if (box) box.style.display = SEC[k] ? 'block' : 'none';
-    const c = $('c-' + k); if (c) c.classList.remove('up');
+    const c = $('c-' + k); if (c) c.classList.toggle('up', !!SEC[k]);
   });
 }
 
@@ -1197,7 +1197,7 @@ function renderRecon() {
   html += lgKeys.map(k => '<div class="comprow"><span>' + esc(k) + '</span><b>' + byLg[k].n + ' 单 · 运费' + money(byLg[k].freight) + '</b></div>').join('') || '<div class="empty">暂无</div>';
   html += '</div>';
 
-  html += '<div class="card"><div class="cardhead" onclick="toggleSec(\'settle\')"><div class="l">🏦 物流对账结算</div><span class="caret" id="c-settle">▼</span></div>';
+  html += '<div class="card"><div class="cardhead" onclick="toggleSec(\'settle\')"><div class="l">🏦 物流对账结算</div><span class="caret' + (SEC.settle ? ' up' : '') + '" id="c-settle">▼</span></div>';
   html += '<div id="b-settle">';
   html += '<div class="purplecard" style="margin-top:10px"><div class="pt">📊 本月物流汇总</div>' +
     '<div class="pl"><span>代收尾款总额</span><b>' + money(st.collection) + '</b></div>' +
