@@ -126,8 +126,8 @@ padding:0 13px;height:44px;margin:0 12px 12px}
 .tg-yellow{background:#fdf3d9;color:#b5811a}
 .tg-red{background:#fdeaea;color:#d6483f}
 .tg-gray{background:#f1f3f6;color:#7b8494}
-.acts{display:flex;gap:8px;margin-top:11px;padding-top:11px;border-top:1px dashed #e8ecf2}
-.acts button{flex:1;height:36px;border-radius:9px;font-size:13.5px;border:1px solid}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;padding-top:11px;border-top:1px dashed #e8ecf2}
+.acts button{flex:1 1 64px;min-width:64px;height:38px;border-radius:9px;font-size:13px;border:1px solid;line-height:1.25;padding:0 4px}
 .a-copy{color:#8b3fd0;border-color:#d9c4f0;background:#fbf7ff}
 .a-edit{color:#2f7cd0;border-color:#bcd8f2;background:#f7fbff}
 .a-ret{color:#d6483f;border-color:#f3c8c4;background:#fffafa}
@@ -227,6 +227,23 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
 .tglab.on .cbox{background:#22a35b;border-color:#22a35b}
 .dactions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
 .dactions button{flex:1;min-width:66px;border:1px solid #dfe5ee;border-radius:9px;background:#fff;padding:8px 6px;font-size:12.5px}
+
+
+/* 退货弹窗 */
+.rtip{font-size:13.5px;color:#6b7280;line-height:1.65;margin:0 0 14px}
+.ropt{border:1px solid #e3e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff;transition:.15s}
+.ropt .t{font-size:16.5px;font-weight:700;color:#1f2937;letter-spacing:.3px}
+.ropt .s{font-size:13px;color:#8b94a3;margin-top:5px}
+.ropt.on{border-color:#f0a63a;background:#fffdf3;box-shadow:0 0 0 2px rgba(240,166,58,.13)}
+.ropt.on .t{color:#d97706}
+.lgrow{display:flex;gap:8px;align-items:stretch}
+.lgrow select{flex:1}
+.lgmanage{width:72px;border:1px solid #e3e8f0;background:#f7f9fc;border-radius:10px;font-size:14px;color:#2f7cd0}
+.lgmgr{margin-top:10px;padding:10px;border:1px dashed #dfe5ee;border-radius:10px;background:#fafbfd}
+.a-undo{color:#d97706;border-color:#f3d7a4;background:#fffaf0}
+.save.ghostbtn{background:#f2f4f8;color:#6b7280;box-shadow:none}
+.save.dangerbtn{background:linear-gradient(135deg,#f0605a,#e0453a);box-shadow:0 6px 14px rgba(224,69,58,.22)}
+.retline{color:#c2410c}
 
 </style>
 </head>
@@ -1050,18 +1067,24 @@ function billCard(r) {
   if (r.isReturn) tags += '<span class="tag tg-red">退货</span>';
   if (r.shipStatus === 'pending') tags += '<span class="tag tg-gray">待发货</span>';
   const remark = r.remark ? '<div class="l3" style="margin-top:6px;color:#8b6b1a">📝 ' + esc(r.remark) + '</div>' : '';
-  const cancelBtn = (r.paymentType === 'partial' && !r.balancePaid && !r.collectCancelled && !r.isReturn)
-    ? '<button class="a-cancel" onclick="cancelCollect(\'' + r.id + '\')">代收取消</button>' : '';
+  const retBtn = r.isReturn
+    ? '<button class="a-undo" onclick="undoReturn(\'' + r.id + '\')">↩ 撤销退货</button>'
+    : '<button class="a-ret" onclick="openReturn(\'' + r.id + '\')">↩ 退货</button>';
+  const collectBtn = r.collectCancelled
+    ? '<button class="a-cancel" onclick="restoreCollect(\'' + r.id + '\')">恢复代收</button>'
+    : ((r.paymentType === 'partial' && !r.balancePaid && !r.isReturn)
+        ? '<button class="a-cancel" onclick="cancelCollect(\'' + r.id + '\')">代收取消</button>' : '');
+  const retLine = r.isReturn
+    ? '<div class="l3 retline">↩ ' + payerShort(r.returnFreightPayer) + ' · 原' + money(rtOrigFreight(r)) + '+退' + money(r.returnFreight) + '</div>' : '';
   return '<div class="rec">' +
     '<div class="l1"><div class="gname">' + esc(r.goodsName) + '</div><div class="amt">' + money(r.totalPrice) + '</div></div>' +
     '<div class="l2"><span>📅 发货 ' + (r.shipDate || '') + '</span><span>👤 ' + esc(r.shipper || '') + '</span></div>' +
-    '<div class="l3">🚚 ' + esc(r.logisticsCompany || '') + (r.trackingNumber ? ' · ' + esc(r.trackingNumber) : '') + '</div>' +
+    '<div class="l3">🚚 ' + esc(r.logisticsCompany || '') + (r.trackingNumber ? ' · ' + esc(r.trackingNumber) : '') + '</div>' + retLine +
     '<div class="tags">' + tags + '</div>' + remark +
     '<div class="acts">' +
     '<button class="a-copy" onclick="copyRecord(\'' + r.id + '\')">📋 复制</button>' +
     '<button class="a-edit" onclick="openEdit(\'' + r.id + '\')">编辑</button>' +
-    '<button class="a-ret" onclick="openReturn(\'' + r.id + '\')">↩ 退货</button>' +
-    cancelBtn +
+    retBtn + collectBtn +
     '<button class="a-del" onclick="delRecord(\'' + r.id + '\')">删除</button>' +
     '</div></div>';
 }
@@ -1241,8 +1264,12 @@ function reconItem(r, idx) {
     '<div class="dactions">' +
     '<button class="a-copy" onclick="copyRecord(\'' + id + '\')">📋 复制</button>' +
     '<button class="a-edit" onclick="openEdit(\'' + id + '\')">编辑</button>' +
-    '<button class="a-ret" onclick="openReturn(\'' + id + '\')">↩ 退货</button>' +
-    (r.paymentType !== 'full' && !r.balancePaid && !r.collectCancelled ? '<button class="a-cancel" onclick="cancelCollect(\'' + id + '\')">代收取消</button>' : '') +
+    (r.isReturn
+      ? '<button class="a-undo" onclick="undoReturn(\'' + id + '\')">↩ 撤销退货</button>'
+      : '<button class="a-ret" onclick="openReturn(\'' + id + '\')">↩ 退货</button>') +
+    (r.collectCancelled
+      ? '<button class="a-cancel" onclick="restoreCollect(\'' + id + '\')">恢复代收</button>'
+      : ((r.paymentType !== 'full' && !r.balancePaid) ? '<button class="a-cancel" onclick="cancelCollect(\'' + id + '\')">代收取消</button>' : '')) +
     '<button class="a-del" onclick="delRecord(\'' + id + '\')">删除</button>' +
     '</div></div>'
   ) : '';
@@ -1256,6 +1283,7 @@ function reconItem(r, idx) {
     '<div class="dgname">' + esc(r.goodsName) + '<span class="a">' + money(r.totalPrice) + '</span></div>' +
     '<div class="drow2"><div class="dleft">' + settTag + '</div><div class="dright">' + fTag + '</div></div>' +
     '<div class="drow2"><div class="dleft"><span>🚚 ' + esc(r.logisticsCompany || '') + '</span><span>👤 ' + esc(r.shipper || '') + '</span></div><div class="dright">' + bTag + '</div></div>' +
+    (r.isReturn ? '<div class="drow2"><div class="dleft retline">↩ ' + payerShort(r.returnFreightPayer) + ' · 原' + money(rtOrigFreight(r)) + '+退' + money(r.returnFreight) + '</div></div>' : '') +
     '</div>' + expHtml + (exp ? '' : pills) + '</div>';
 }
 function tgBtn(r, type, label, on) {
@@ -1434,22 +1462,121 @@ function saveEdit(id) {
 }
 
 /* ---------- 退货 ---------- */
+let RT = {id: null, payer: 'each', logistics: ''};
+
+function normPayer(p) {
+  if (p === 'our') return 'both';
+  if (p === 'both' || p === 'each' || p === 'customer') return p;
+  return 'each';
+}
+function payerShort(p) {
+  if (p === 'both' || p === 'our') return p === 'our' ? '我们承担' : '我们承担来回';
+  if (p === 'customer') return '客户承担';
+  return '各承担各的';
+}
+function rtOrigFreight(r) { return numv(r.freight); }
+function rtLogOptions(r) {
+  const cur = RT.logistics;
+  let h = '<option value=""' + (cur === '' ? ' selected' : '') + '>同原物流（' + esc(r.logisticsCompany || '京东物流') + '）</option>';
+  S.logisticsCompanies.forEach(n => {
+    if (n === (r.logisticsCompany || '')) return;
+    h += '<option value="' + esc(n) + '"' + (cur === n ? ' selected' : '') + '>' + esc(n) + '</option>';
+  });
+  h += '<option value="__other"' + (cur === '__other' ? ' selected' : '') + '>其他物流（手填）</option>';
+  return h;
+}
+function rtOptionsHtml(r) {
+  const orig = rtOrigFreight(r);
+  const back = numv(($('rtFreight') || {}).value);
+  const total = orig + back;
+  const rows = [
+    ['both', '我们承担来回', '原运费' + money(orig) + ' + 退回' + money(back) + ' = ' + money(total)],
+    ['each', '各承担各的', '我们出原运费' + money(orig)],
+    ['customer', '客户承担来回', '来回' + money(total) + ' 都不算我们支出']
+  ];
+  return rows.map(x => '<div class="ropt' + (RT.payer === x[0] ? ' on' : '') + '" onclick="pickPayer(\'' + x[0] + '\')">' +
+    '<div class="t">' + x[1] + '</div><div class="s">' + x[2] + '</div></div>').join('');
+}
+function rtRefresh() {
+  const r = S.records.find(x => String(x.id) === String(RT.id)); if (!r) return;
+  const box = $('rtOpts'); if (box) box.innerHTML = rtOptionsHtml(r);
+}
+function rtRecalc() { rtRefresh(); }
+function pickPayer(k) { RT.payer = k; rtRefresh(); }
+function rtLogChange() {
+  const el = $('rtLog'); if (!el) return;
+  RT.logistics = el.value;
+  const other = $('rtLogOther');
+  if (other) other.style.display = (el.value === '__other') ? 'block' : 'none';
+}
+function rtToggleMgr() {
+  const m = $('rtMgr'); if (!m) return;
+  m.style.display = (m.style.display === 'none' || !m.style.display) ? 'block' : 'none';
+}
+function rtAddLog() {
+  const name = (($('rtNewLog') || {}).value || '').trim();
+  if (!name) { toast('请输入物流名称'); return; }
+  if (S.logisticsCompanies.indexOf(name) < 0) S.logisticsCompanies.push(name);
+  RT.logistics = name;
+  saveAll(); fillSelects();
+  const r = S.records.find(x => String(x.id) === String(RT.id));
+  if (r) { $('rtLog').innerHTML = rtLogOptions(r); $('rtLog').value = name; }
+  if ($('rtLogOther')) $('rtLogOther').style.display = 'none';
+  $('rtNewLog').value = '';
+  toast('已添加：' + name);
+}
+
 function openReturn(id) {
   const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
-  openSheet('退货 - ' + r.goodsName,
-    '<div class="field"><div class="lb">退货运费（元）</div><input class="inp" id="rtFreight" type="number" inputmode="decimal" value="' + (r.returnFreight || 0) + '"></div>' +
-    '<div class="field"><div class="lb">运费承担方</div><select class="inp" id="rtPayer"><option value="our"' + (r.returnFreightPayer !== 'customer' ? ' selected' : '') + '>我们承担</option><option value="customer"' + (r.returnFreightPayer === 'customer' ? ' selected' : '') + '>客户承担</option></select></div>' +
-    '<div class="field"><div class="lb">退货物流（选填）</div><input class="inp" id="rtLogistics" value="' + esc(r.returnLogistics || '') + '" placeholder="如：京东物流上门取件"></div>' +
-    '<div class="row2"><button class="save" style="height:48px;background:#e0453a" onclick="saveReturn(\'' + id + '\')">确认退货</button>' +
-    '<button class="save" style="height:48px;background:#f2f4f8;color:#6b7280;box-shadow:none" onclick="closeSheet()">取消</button></div>');
+  RT = { id: r.id, payer: normPayer(r.returnFreightPayer), logistics: (r.returnLogistics || '') };
+  openSheet('↩ 确认退货',
+    '<div class="rtip">本单利润不计入，代收取消。请填写退货运费并选择运费承担方：</div>' +
+    '<div class="field"><div class="lb">退货运费（元）</div>' +
+    '<input class="inp" id="rtFreight" type="number" inputmode="decimal" placeholder="退回物流花的运费" value="' + (r.isReturn && numv(r.returnFreight) ? numv(r.returnFreight) : '') + '" oninput="rtRecalc()"></div>' +
+    '<div class="field"><div class="lb">退回物流（可选）</div>' +
+    '<div class="lgrow"><select class="inp" id="rtLog" onchange="rtLogChange()">' + rtLogOptions(r) + '</select>' +
+    '<button class="lgmanage" onclick="rtToggleMgr()">管理</button></div>' +
+    '<input class="inp" id="rtLogOther" style="display:' + (RT.logistics === '__other' ? 'block' : 'none') + ';margin-top:8px" placeholder="填写物流名称">' +
+    '<div class="lgmgr" id="rtMgr" style="display:none">' +
+    '<input class="inp" id="rtNewLog" placeholder="新增物流公司名称">' +
+    '<button class="save" style="height:40px;margin-top:8px;font-size:14px" onclick="rtAddLog()">添加</button></div></div>' +
+    '<div class="field"><div class="lb">运费谁承担？</div><div id="rtOpts">' + rtOptionsHtml(r) + '</div></div>' +
+    '<div class="row2" style="margin-top:6px">' +
+    '<button class="save ghostbtn" style="height:48px" onclick="closeSheet()">取消</button>' +
+    '<button class="save dangerbtn" style="height:48px" onclick="saveReturn(\'' + id + '\')">确认退货</button></div>');
 }
+
 function saveReturn(id) {
   const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  if (typeof r.collectBeforeReturn === 'undefined') r.collectBeforeReturn = !!r.collectCancelled;
   r.isReturn = true;
+  r.collectCancelled = true;          // 退货后自动取消代收
   r.returnFreight = numv($('rtFreight').value);
-  r.returnFreightPayer = $('rtPayer').value;
-  r.returnLogistics = $('rtLogistics').value.trim();
+  r.returnFreightPayer = RT.payer;
+  let lg = ($('rtLog') || {}).value || '';
+  if (lg === '__other') lg = (($('rtLogOther') || {}).value || '').trim();
+  r.returnLogistics = lg;             // 空字符串代表"同原物流"
   saveAll(); closeSheet(); renderAll(); toast('已标记退货');
+}
+
+function undoReturn(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  if (!confirm('撤销退货？该单将恢复正常订单，代收一并恢复。')) return;
+  r.isReturn = false;
+  r.returnFreight = 0;
+  r.returnFreightPayer = '';
+  r.returnLogistics = '';
+  if (r.collectBeforeReturn === false) r.collectCancelled = false;
+  delete r.collectBeforeReturn;
+  saveAll(); renderAll(); toast('已撤销退货');
+}
+
+function restoreCollect(id) {
+  const r = S.records.find(x => String(x.id) === String(id)); if (!r) return;
+  if (!confirm('恢复代收？该单会重新计入待收尾款。')) return;
+  r.collectCancelled = false;
+  if (r.collectBeforeReturn === false) delete r.collectBeforeReturn;
+  saveAll(); renderAll(); toast('已恢复代收');
 }
 
 /* ---------- 回收站 ---------- */
