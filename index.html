@@ -1837,11 +1837,14 @@ function qkYearVal() {
 
 function qkNormShipper(v) {
   var s = String(v || '').trim();
-  var hit = (S.shipperList || []).filter(function (n) { return String(n).toLowerCase() === s.toLowerCase(); })[0];
-  if (hit) return hit;
-  if (s.toLowerCase() === 'w') return 'W';
-  if (s.toLowerCase() === 's') return 'S';
-  return s;
+  var low = s.toLowerCase();
+  if (low === 'gsf' || low === 'f') return 'F';
+  if (low === 'gss' || low === 's') return 'S';
+  if (low === 'w') return 'W';
+  if (low === 'y') return 'Y';
+  if (low === 'l') return 'L';
+  var hit = (S.shipperList || []).filter(function (n) { return String(n).toLowerCase() === low; })[0];
+  return hit || s;
 }
 function qkParseLine(raw, year) {
   var rawLine = String(raw || '').trim();
@@ -1879,28 +1882,47 @@ function qkParseLine(raw, year) {
   s = s.replace(/^[\s\u3000:：\-]+/, '');
   var isReturn = false;
   var shipper = 'S';
-  var sm = s.match(/^(gsF|GSF|gsf|w|W|S)\s*/);
+  var sm = s.match(/^(gsF|gsS|GSF|GSS|gsf|gss|F|f|W|w|Y|y|S|s|L|l)\s*/);
   if (sm) { shipper = sm[1]; s = s.slice(sm[0].length); }
   if (/^退货/.test(s)) { isReturn = true; s = s.replace(/^退货\s*/, ''); }
 
-  var pm = s.match(/^(.*?)(?:[，,\s]*)(\d+(?:\.\d+)?)\s*(包邮|到付)(.*)$/);
-  if (!pm) return {bad: {text: s, why: '没找到“金额 + 包邮/到付”'}};
+  var pm = s.match(/^(.*?)[，,\s]*总价(\d+(?:\.\d+)?)(.*)$/);
+  var ftype = 'include';
+  if (pm) {
+    pm = [pm[0], pm[1], pm[2], '', pm[3]];
+  } else {
+    pm = s.match(/^(.*?)[，,\s]*总?价?(\d+(?:\.\d+)?)\s*元?\s*(包邮|到付)(.*)$/);
+    if (pm) {
+      ftype = pm[3] === '包邮' ? 'include' : 'collect';
+      pm = [pm[0], pm[1], pm[2], '', pm[4]];
+    } else {
+      pm = s.match(/^(.*?)[，,\s]*总?价?(\d+(?:\.\d+)?)\s*元(.*)$/);
+      if (pm) {
+        pm = [pm[0], pm[1], pm[2], '', pm[3]];
+      } else {
+        pm = s.match(/^(.*?)[，,\s]*(\d+(?:\.\d+)?)[，,]?\s*((?:全款|定金|定|代收)[^，,]*.*)$/);
+        if (pm) pm = [pm[0], pm[1], pm[2], '', pm[3]];
+      }
+    }
+  }
+  if (!pm) return {bad: {text: s, why: '没找到金额'}};
   var goods = pm[1].replace(/[，,\s]+$/, '').replace(/[的元款]$/, '').trim();
   var total = +pm[2];
-  var ftype = pm[3] === '包邮' ? 'include' : 'collect';
-  var tail = pm[4] || '';
+  var tail = pm.length > 4 ? (pm[4] || '') : (pm[3] || '');
   if (!goods) return {bad: {text: s, why: '没识别到货物名称'}};
   if (m < 1 || m > 12 || d < 1 || d > 31) return {bad: {text: s, why: '日期不合法'}};
 
-  var dep = 0, full = false, collect = null, cancelled = false, freight = 0, logi = '';
+  var dep = 0, full = false, collect = null, cancelled = false, freight = 0, logi = '', costOv = null;
   var remark = [];
   var segs = tail.split(/[，,]/).map(function (x) { return x.trim(); }).filter(Boolean);
   segs.forEach(function (seg) {
     if (/^全款/.test(seg)) { full = true; return; }
+    var km = seg.match(/^成本(\d+(?:\.\d+)?)/); if (km) { costOv = +km[1]; return; }
     var dm = seg.match(/^(?:定金|定)(\d+(?:\.\d+)?)/); if (dm) { dep = +dm[1]; return; }
     var cm = seg.match(/^代收(?:开成到付)?(\d+(?:\.\d+)?)/) || seg.match(/^代(\d+(?:\.\d+)?)/);
     if (cm) { collect = +cm[1]; return; }
     if (/代收已取消|代收取消/.test(seg)) { cancelled = true; return; }
+    var vm = seg.match(/^运费(\d+(?:\.\d+)?)/); if (vm) { freight = +vm[1]; return; }
     var lm = seg.match(/^(国新|壹米滴答|京东物流|京东|安能|货啦啦|德邦|顺丰)(\d+(?:\.\d+)?)/);
     if (lm) { logi = lm[1] === '国新' ? '京东物流' : lm[1]; freight = +lm[2]; return; }
     if (/^退货/.test(seg)) { isReturn = true; return; }
@@ -1913,7 +1935,7 @@ function qkParseLine(raw, year) {
   if (full) dep = 0;
   if (dep > total) dep = total;
   var bal = full ? 0 : Math.max(0, total - dep);
-  var cost = (S.goodsCost && S.goodsCost[goods]) ? numv(S.goodsCost[goods]) : 0;
+  var cost = (costOv != null) ? costOv : ((S.goodsCost && S.goodsCost[goods]) ? numv(S.goodsCost[goods]) : 0);
 
   return {
     rec: {
