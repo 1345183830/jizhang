@@ -282,7 +282,7 @@ padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:.25s;
 .qkline{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;padding:7px 0;border-bottom:1px dashed #eef1f5;font-size:13px;color:#374151}
 .qkline .qkd{color:#2f7cd0;font-weight:600}
 .qkline .qkm{margin-left:auto;color:#d63333;font-weight:600}
-.qkline .qkedit{font-size:12px;color:#2f7cd0;margin-left:8px;white-space:nowrap}
+.qkline .qkedit{font-size:12px;color:#2f7cd0;margin-left:8px;white-space:nowrap;padding:6px 12px;border:1px solid #bcd8f2;background:#f7fbff;border-radius:7px;line-height:1.5;cursor:pointer;-webkit-tap-highlight-color:rgba(47,124,208,.15)}
 .qkline small{width:100%;color:#93a0b1;font-size:11.5px}
 .qkbad{background:#fff5f5;border-radius:8px;padding:8px;margin:6px 0;font-size:12.5px;color:#c24141}
 .qkbad b{display:block;font-size:12px;color:#9aa4b2;font-weight:500;margin-bottom:2px;word-break:break-all}
@@ -1914,10 +1914,18 @@ function qkParseLine(raw, year) {
 
   var dep = 0, full = false, collect = null, cancelled = false, freight = 0, logi = '', costOv = null;
   var remark = [];
+  /* 成本兜底：支持 成本560 / 成本=560 / 成本:560 / 成本 560 / 成本：560元 */
+  var costHit = tail.match(/成本\s*[:：=＝]?\s*(\d+(?:\.\d+)?)/);
+  if (costHit) {
+    costOv = +costHit[1];
+    tail = tail.replace(costHit[0], '');
+  } else {
+    /* 有“成本”但后面不是数字（例如 成本=待填），只从备注里去掉，成本留空 */
+    tail = tail.replace(/成本\s*[:：=＝]?\s*[^，,\s]*/g, '');
+  }
   var segs = tail.split(/[，,]/).map(function (x) { return x.trim(); }).filter(Boolean);
   segs.forEach(function (seg) {
     if (/^全款/.test(seg)) { full = true; return; }
-    var km = seg.match(/^成本(\d+(?:\.\d+)?)/); if (km) { costOv = +km[1]; return; }
     var dm = seg.match(/^(?:定金|定)(\d+(?:\.\d+)?)/); if (dm) { dep = +dm[1]; return; }
     var cm = seg.match(/^代收(?:开成到付)?(\d+(?:\.\d+)?)/) || seg.match(/^代(\d+(?:\.\d+)?)/);
     if (cm) { collect = +cm[1]; return; }
@@ -1925,6 +1933,7 @@ function qkParseLine(raw, year) {
     var vm = seg.match(/^运费(\d+(?:\.\d+)?)/); if (vm) { freight = +vm[1]; return; }
     var lm = seg.match(/^(国新|壹米滴答|京东物流|京东|安能|货啦啦|德邦|顺丰)(\d+(?:\.\d+)?)/);
     if (lm) { logi = lm[1] === '国新' ? '京东物流' : lm[1]; freight = +lm[2]; return; }
+    if (/^(国新|壹米滴答|京东物流|京东|安能|货啦啦|德邦|顺丰)$/.test(seg)) { logi = seg === '国新' ? '京东物流' : seg; return; }
     if (/^退货/.test(seg)) { isReturn = true; return; }
     if (/现付|已付/.test(seg)) return;
     if (/^\d+张布$/.test(seg)) { goods += seg; return; }
@@ -1935,6 +1944,7 @@ function qkParseLine(raw, year) {
   if (full) dep = 0;
   if (dep > total) dep = total;
   var bal = full ? 0 : Math.max(0, total - dep);
+  var costKnown = (costOv != null) || !!(S.goodsCost && S.goodsCost[goods]);
   var cost = (costOv != null) ? costOv : ((S.goodsCost && S.goodsCost[goods]) ? numv(S.goodsCost[goods]) : 0);
 
   return {
@@ -1952,7 +1962,7 @@ function qkParseLine(raw, year) {
       logisticsReconciled: false, paymentSettled: false, profitSettled: false,
       shipStatus: 'shipped',
       isReturn: false, returnFreight: 0, returnFreightPayer: '', returnLogistics: '',
-      createdAt: new Date().toISOString(), _qkReturn: isReturn
+      createdAt: new Date().toISOString(), _qkReturn: isReturn, _qkCostMissing: !costKnown
     }
   };
 }
@@ -1961,14 +1971,18 @@ function quickParse() {
   var txt = (($('qkBox') || {}).value || '').trim();
   if (!txt) { toast('先粘贴要录入的内容'); return; }
   var y = qkYearVal();
-  var rows = [], bad = [];
+  var rows = [], bad = [], skipped = 0;
   txt.split(/\r?\n/).forEach(function (line) {
-    var r = qkParseLine(line, y);
+    var raw = String(line || '');
+    if (!raw.trim()) return;
+    /* 含 gsS 的整行直接跳过，不录入、不报错 */
+    if (/gsS/i.test(raw)) { skipped++; return; }
+    var r = qkParseLine(raw, y);
     if (!r) return;
     if (r.bad) { if (r.bad.why !== '没有以日期开头，已跳过') bad.push(r.bad); return; }
     rows.push(r.rec);
   });
-  QK = {rows: rows, bad: bad};
+  QK = {rows: rows, bad: bad, skipped: skipped};
   qkRenderPreview();
 }
 function qkRenderPreview() {
@@ -1978,20 +1992,23 @@ function qkRenderPreview() {
   if (rows.length || bad.length) {
     var sum = rows.reduce(function (a, r) { return a + r.totalPrice; }, 0);
     var fsum = rows.reduce(function (a, r) { return a + r.freight; }, 0);
+    var skipN = (QK.skipped || 0);
     html += '<div class="qksum">可录入 ' + rows.length + ' 条' + (bad.length ? ' · 需处理 ' + bad.length + ' 条' : '') +
+      (skipN ? ' · 已跳过 gsS ' + skipN + ' 条' : '') +
       ' · 总价 ¥' + sum.toLocaleString('zh-CN') + ' · 运费 ¥' + fsum.toLocaleString('zh-CN') + '</div>';
     html += rows.map(function (r, i) {
       var tags = [];
       if (r._qkReturn) tags.push('退货(需手动标记)');
       if (r.collectCancelled) tags.push('代收已取消');
       if (r.freightType === 'collect') tags.push('到付');
+      var c0 = (r.items && r.items[0] ? (r.items[0].cost || 0) : 0);
+      var profit = r.totalPrice - c0 - (r.freightType === 'include' ? r.freight : 0);
+      var costTxt = r._qkCostMissing ? '成本 待填' : ('成本 ¥' + c0);
+      var profitTxt = r._qkReturn ? '' : (r._qkCostMissing ? ' · 利润待算' : (' · 利润 ¥' + profit));
       return '<div class="qkline"><span class="qkd">' + r.shipDate.slice(5) + '</span><span>' + esc(r.shipper) + '</span><span>' + esc(r.goodsName) + '</span>' +
-        '<span class="qkm">¥' + r.totalPrice.toLocaleString('zh-CN') + '</span><span class="qkedit" onclick="qkEditRow(' + i + ')">编辑</span>' +
-        (function () {
-          var c0 = (r.items && r.items[0] ? (r.items[0].cost || 0) : 0);
-          var profit = r.totalPrice - c0 - (r.freightType === 'include' ? r.freight : 0);
-          return '<small>成本 ¥' + c0 + (r._qkReturn ? '' : ' · 利润 ¥' + profit) + ' · 定金 ¥' + r.deposit + ' · 代收 ¥' + r.balance + ' · ' + esc(r.logisticsCompany) + ' 运费 ¥' + r.freight + (tags.length ? ' · ' + tags.join(' / ') : '') + (r.remark ? ' · ' + esc(r.remark) : '') + '</small></div>';
-        })();
+        '<span class="qkm">¥' + r.totalPrice.toLocaleString('zh-CN') + '</span>' +
+        '<span class="qkedit" onclick="qkEditRow(' + i + ')">编辑</span>' +
+        '<small>' + costTxt + profitTxt + ' · 定金 ¥' + r.deposit + ' · 代收 ¥' + r.balance + ' · ' + esc(r.logisticsCompany) + ' 运费 ¥' + r.freight + (tags.length ? ' · ' + tags.join(' / ') : '') + (r.remark ? ' · ' + esc(r.remark) : '') + '</small></div>';
     }).join('');
     html += bad.map(function (b) { return '<div class="qkbad"><b>' + esc(b.text) + '</b>' + esc(b.why) + '</div>'; }).join('');
   }
@@ -2071,6 +2088,7 @@ function qkSaveRow(i) {
   r.orderDate = r.shipDate;
   r.remark = $('qeRemark').value.trim();
   r.collectCancelled = $('qeCancel').checked;
+  r._qkCostMissing = false;
   closeSheet(); qkRenderPreview(); toast('已修改，记得最后点确认录入');
 }
 
@@ -2081,7 +2099,7 @@ function qkDelRow(i) {
 
 function quickCommit() {
   if (!QK.rows.length) return;
-  var recs = QK.rows.map(function (r) { delete r._qkReturn; return r; });
+  var recs = QK.rows.map(function (r) { delete r._qkReturn; delete r._qkCostMissing; return r; });
   S.records = recs.concat(S.records);
   recs.forEach(function (r) {
     if (r.goodsName && S.goodsList.indexOf(r.goodsName) < 0) S.goodsList.push(r.goodsName);
